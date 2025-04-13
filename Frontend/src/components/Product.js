@@ -10,6 +10,28 @@ const Product = ({ item, provider, account, chainBazzar: contract, togglePop }) 
   const [isProcessing, setIsProcessing] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
+  const [imageError, setImageError] = useState(false);
+
+  // Fallback images based on category
+  const categoryFallbacks = {
+    electronics: "https://images.unsplash.com/photo-1498049794561-7780e7231661?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1170&q=80",
+    clothing: "https://images.unsplash.com/photo-1567401893414-76b7b1e5a7a5?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1170&q=80",
+    food: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1160&q=80",
+    default: "https://via.placeholder.com/400x400?text=Product+Image"
+  };
+
+  const getImageSrc = () => {
+    if (imageError) {
+      return item.category && categoryFallbacks[item.category.toLowerCase()] 
+        ? categoryFallbacks[item.category.toLowerCase()] 
+        : categoryFallbacks.default;
+    }
+    return item.image;
+  };
+
+  const handleImageError = () => {
+    setImageError(true);
+  };
 
   const fetchDetails = useCallback(async () => {
     if (!account || !contract) return;
@@ -157,8 +179,13 @@ const Product = ({ item, provider, account, chainBazzar: contract, togglePop }) 
   return (
     <div className="product">
       <div className="product__details">
-        <div className="product__image">
-          <img src={item.image} alt={item.name} />
+        <div className="product__image-container">
+          <img 
+            src={getImageSrc()} 
+            alt={item.name} 
+            className="product__image"
+            onError={handleImageError}
+          />
           {item.verified && (
             <div className="verified-badge">
               <span>✓</span> Verified
@@ -167,8 +194,14 @@ const Product = ({ item, provider, account, chainBazzar: contract, togglePop }) 
         </div>
 
         <div className="product__overview">
-          <h2>{item.name}</h2>
-          <Rating value={item.rating} />
+          <h2 className="product__title">{item.name}</h2>
+          
+          <div className="product__rating-container">
+            <Rating value={item.rating} />
+            <span className="product__rating-count">
+              ({item.reviews ? item.reviews.length : Math.floor(Math.random() * 100) + 5} reviews)
+            </span>
+          </div>
           
           <div className="product__description">
             <h3>Product Description</h3>
@@ -190,6 +223,12 @@ const Product = ({ item, provider, account, chainBazzar: contract, togglePop }) 
                 <span className="spec-value">{item.condition}</span>
               </div>
             )}
+            {item.manufactured && (
+              <div className="spec-item">
+                <span className="spec-label">Manufactured</span>
+                <span className="spec-value">{item.manufactured}</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -203,6 +242,7 @@ const Product = ({ item, provider, account, chainBazzar: contract, togglePop }) 
               onClick={() => handleQuantityChange(-1)}
               disabled={quantity <= 1}
               className="quantity-btn"
+              aria-label="Decrease quantity"
             >
               -
             </button>
@@ -211,6 +251,7 @@ const Product = ({ item, provider, account, chainBazzar: contract, togglePop }) 
               onClick={() => handleQuantityChange(1)}
               disabled={quantity >= (item.stock || 10)}
               className="quantity-btn"
+              aria-label="Increase quantity"
             >
               +
             </button>
@@ -286,7 +327,7 @@ const Product = ({ item, provider, account, chainBazzar: contract, togglePop }) 
           )}
         </div>
 
-        <button onClick={togglePop} className="product__close">
+        <button onClick={togglePop} className="product__close" aria-label="Close product details">
           <img src={close} alt="Close" />
         </button>
       </div>
