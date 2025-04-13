@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import config from '../config';
-import api from '../services/authService';
+import * as apiService from '../services/api';
 import {
   Box,
   Button,
@@ -21,12 +21,19 @@ import {
   useMediaQuery,
   Divider,
   Tooltip,
-  Badge
+  Badge,
+  Stepper,
+  Step,
+  StepLabel
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
+import ReceiptIcon from '@mui/icons-material/Receipt';
+import LocalShippingIcon from '@mui/icons-material/LocalShipping';
+import PaymentIcon from '@mui/icons-material/Payment';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import './Cart.css';
 
 const Cart = () => {
@@ -36,6 +43,10 @@ const Cart = () => {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const [checkoutStep, setCheckoutStep] = useState(0);
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const steps = ['Review Cart', 'Shipping', 'Payment', 'Confirmation'];
 
   const handleCheckout = async () => {
     if (cart.length === 0) {
@@ -59,20 +70,34 @@ const Cart = () => {
 
     try {
       // Set loading state
+      setIsProcessing(true);
       setSnackbar({
         open: true,
         message: 'Processing your order...',
         severity: 'info'
       });
 
-      // Create order data
+      // Calculate totals
+      const subtotal = cart.reduce((total, item) => total + (item.price * item.quantity), 0);
+      const tax = subtotal * 0.1;
+      const total = subtotal + tax;
+      
+      // Format numbers to 2 decimal places
+      const formattedSubtotal = subtotal.toFixed(2);
+      const formattedTax = tax.toFixed(2);
+      const formattedTotal = total.toFixed(2);
+
+      // Create order and bill data
       const orderData = {
         items: cart.map(item => ({
           productId: item._id,
+          name: item.name,
           quantity: item.quantity,
           price: item.price
         })),
-        totalAmount: cart.reduce((total, item) => total + (item.price * item.quantity), 0),
+        subtotal: parseFloat(formattedSubtotal),
+        tax: parseFloat(formattedTax),
+        totalAmount: parseFloat(formattedTotal),
         shippingAddress: {
           street: '123 Demo Street',
           city: 'Test City',
@@ -81,28 +106,34 @@ const Cart = () => {
           country: 'Test Country'
         },
         paymentMethod: 'credit_card',
-        status: 'pending'
+        status: 'pending',
+        userId: user?._id,
+        email: user?.email,
+        date: new Date().toISOString()
       };
 
       console.log('Sending order data:', orderData);
 
-      // Send order to backend
-      const response = await fetch('http://localhost:3005/api/orders', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem(config.AUTH.TOKEN_KEY)}`
-        },
-        body: JSON.stringify(orderData)
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to create order');
-      }
-
-      const data = await response.json();
-      console.log('Order created successfully:', data);
+      // Create order using apiService
+      const orderResponse = await apiService.createOrder(orderData);
+      console.log('Order created successfully:', orderResponse);
+      
+      // Create bill record
+      const billData = {
+        orderId: orderResponse.data._id,
+        userId: user?._id,
+        items: orderData.items,
+        subtotal: orderData.subtotal,
+        tax: orderData.tax,
+        total: orderData.totalAmount,
+        date: orderData.date,
+        status: 'paid',
+        shipping: orderData.shippingAddress
+      };
+      
+      // Save bill to database
+      const billResponse = await apiService.createBill(billData);
+      console.log('Bill created successfully:', billResponse);
 
       // Clear cart and show success message
       clearCart();
@@ -115,7 +146,8 @@ const Cart = () => {
       // Navigate to order confirmation page
       navigate('/order-confirmation', { 
         state: { 
-          order: data.order,
+          order: orderResponse.data,
+          bill: billResponse.data,
           orderDate: new Date().toLocaleDateString()
         }
       });
@@ -126,6 +158,8 @@ const Cart = () => {
         message: error.message || 'Failed to place order. Please try again.',
         severity: 'error'
       });
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -199,132 +233,198 @@ const Cart = () => {
     );
   }
 
+  // Calculate cart totals
+  const subtotal = cart.reduce((total, item) => total + (item.price * item.quantity), 0);
+  const shipping = 0; // Free shipping
+  const tax = subtotal * 0.1;
+  const total = subtotal + tax;
+
   return (
     <Container maxWidth="lg" className="cart-container">
+      <Box mb={4}>
+        <Stepper activeStep={checkoutStep} alternativeLabel>
+          {steps.map((label) => (
+            <Step key={label}>
+              <StepLabel>{label}</StepLabel>
+            </Step>
+          ))}
+        </Stepper>
+      </Box>
+      
       <Grid container spacing={3}>
         {/* Cart Items */}
         <Grid item xs={12} md={8}>
-          <Paper elevation={0} className="cart-items-container">
-            <Box display="flex" alignItems="center" gap={2} mb={3}>
+          <Paper elevation={2} className="cart-items-container" sx={{ borderRadius: '12px', overflow: 'hidden' }}>
+            <Box display="flex" alignItems="center" gap={2} mb={3} p={2} bgcolor="primary.light" color="white">
               <Badge
                 badgeContent={cart.length}
-                color="primary"
+                color="error"
                 sx={{
                   '& .MuiBadge-badge': {
-                    backgroundColor: '#4361ee',
+                    backgroundColor: '#ff3d00',
                     color: 'white',
-                    fontSize: '1rem',
+                    fontSize: '0.85rem',
                     padding: '0.25rem 0.5rem',
                     borderRadius: '12px',
                   }
                 }}
               >
-                <ShoppingCartIcon sx={{ fontSize: 32, color: '#4361ee' }} />
+                <ShoppingCartIcon sx={{ fontSize: 32, color: 'white' }} />
               </Badge>
-              <Typography variant="h5" className="cart-title">
+              <Typography variant="h5" className="cart-title" fontWeight="bold">
                 Shopping Cart
               </Typography>
             </Box>
             <Divider className="cart-divider" />
-            {cart.map((item) => (
-              <Card key={item._id} className="cart-item-card">
-                <Grid container spacing={2} alignItems="center">
-                  <Grid item xs={12} sm={3}>
-                    <CardMedia
-                      component="img"
-                      image={item.image}
-                      alt={item.name}
-                      className="cart-item-image"
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={9}>
-                    <CardContent className="cart-item-content">
-                      <Typography variant="h6" className="cart-item-name">
-                        {item.name}
-                      </Typography>
-                      <Typography variant="body1" className="cart-item-price">
-                        ${item.price.toFixed(2)}
-                      </Typography>
-                      <Box className="quantity-controls">
-                        <Tooltip title="Decrease quantity">
-                          <IconButton
-                            size="small"
-                            onClick={() => handleQuantityChange(item._id, item.quantity - 1)}
-                            className="quantity-button"
-                          >
-                            <RemoveIcon />
-                          </IconButton>
-                        </Tooltip>
-                        <Typography variant="body1" className="quantity-display">
-                          {item.quantity}
+            <Box sx={{ p: 2 }}>
+              {cart.map((item) => (
+                <Card key={item._id} className="cart-item-card" sx={{ mb: 2, borderRadius: '8px', overflow: 'hidden' }}>
+                  <Grid container spacing={2} alignItems="center">
+                    <Grid item xs={12} sm={3}>
+                      <CardMedia
+                        component="img"
+                        image={item.image || item.imageUrl}
+                        alt={item.name}
+                        className="cart-item-image"
+                        sx={{ height: '120px', objectFit: 'contain', bgcolor: 'grey.100', p: 1 }}
+                        onError={(e) => {
+                          e.target.src = 'https://via.placeholder.com/150x150?text=No+Image';
+                        }}
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={9}>
+                      <CardContent className="cart-item-content">
+                        <Box display="flex" justifyContent="space-between" alignItems="flex-start">
+                          <Typography variant="h6" className="cart-item-name" fontWeight="bold">
+                            {item.name}
+                          </Typography>
+                          <Typography variant="h6" className="cart-item-price" color="primary.main" fontWeight="bold">
+                            ${item.price.toFixed(2)}
+                          </Typography>
+                        </Box>
+                        
+                        <Box display="flex" justifyContent="space-between" alignItems="center" mt={2}>
+                          <Box className="quantity-controls" sx={{ display: 'flex', alignItems: 'center', border: '1px solid', borderColor: 'grey.300', borderRadius: '4px', width: 'fit-content' }}>
+                            <Tooltip title="Decrease quantity">
+                              <IconButton
+                                size="small"
+                                onClick={() => handleQuantityChange(item._id, item.quantity - 1)}
+                                className="quantity-button"
+                                sx={{ borderRadius: '4px 0 0 4px' }}
+                              >
+                                <RemoveIcon />
+                              </IconButton>
+                            </Tooltip>
+                            <Typography variant="body1" className="quantity-display" sx={{ px: 2, py: 0.5, borderLeft: '1px solid', borderRight: '1px solid', borderColor: 'grey.300' }}>
+                              {item.quantity}
+                            </Typography>
+                            <Tooltip title="Increase quantity">
+                              <IconButton
+                                size="small"
+                                onClick={() => handleQuantityChange(item._id, item.quantity + 1)}
+                                className="quantity-button"
+                                sx={{ borderRadius: '0 4px 4px 0' }}
+                              >
+                                <AddIcon />
+                              </IconButton>
+                            </Tooltip>
+                          </Box>
+                          <Tooltip title="Remove item">
+                            <IconButton
+                              onClick={() => handleRemoveItem(item._id)}
+                              className="remove-button"
+                              sx={{ color: 'error.main' }}
+                            >
+                              <DeleteIcon />
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
+                        <Typography variant="body2" color="text.secondary" mt={1}>
+                          Item Total: ${(item.price * item.quantity).toFixed(2)}
                         </Typography>
-                        <Tooltip title="Increase quantity">
-                          <IconButton
-                            size="small"
-                            onClick={() => handleQuantityChange(item._id, item.quantity + 1)}
-                            className="quantity-button"
-                          >
-                            <AddIcon />
-                          </IconButton>
-                        </Tooltip>
-                      </Box>
-                      <Tooltip title="Remove item">
-                        <IconButton
-                          onClick={() => handleRemoveItem(item._id)}
-                          className="remove-button"
-                        >
-                          <DeleteIcon />
-                        </IconButton>
-                      </Tooltip>
-                    </CardContent>
+                      </CardContent>
+                    </Grid>
                   </Grid>
-                </Grid>
-              </Card>
-            ))}
-            <Button
-              variant="outlined"
-              color="error"
-              onClick={handleClearCart}
-              className="clear-cart-button"
-              startIcon={<DeleteIcon />}
-            >
-              Clear Cart
-            </Button>
+                </Card>
+              ))}
+              <Button
+                variant="outlined"
+                color="error"
+                onClick={handleClearCart}
+                className="clear-cart-button"
+                startIcon={<DeleteIcon />}
+                sx={{ mt: 2 }}
+              >
+                Clear Cart
+              </Button>
+            </Box>
           </Paper>
         </Grid>
 
         {/* Order Summary */}
         <Grid item xs={12} md={4}>
-          <Paper elevation={0} className="order-summary-container">
-            <Typography variant="h6" className="order-summary-title">
-              Order Summary
-            </Typography>
-            <Divider className="summary-divider" />
-            <Box className="summary-details">
-              <Typography variant="body1" className="summary-item">
-                Subtotal: ${cart.reduce((total, item) => total + (item.price * item.quantity), 0).toFixed(2)}
-              </Typography>
-              <Typography variant="body1" className="summary-item">
-                Shipping: Free
-              </Typography>
-              <Typography variant="body1" className="summary-item">
-                Tax: ${(cart.reduce((total, item) => total + (item.price * item.quantity), 0) * 0.1).toFixed(2)}
-              </Typography>
-              <Divider className="summary-divider" />
-              <Typography variant="h6" className="total-amount">
-                Total: ${(cart.reduce((total, item) => total + (item.price * item.quantity), 0) * 1.1).toFixed(2)}
+          <Paper elevation={2} className="order-summary-container" sx={{ borderRadius: '12px', overflow: 'hidden' }}>
+            <Box bgcolor="primary.light" color="white" p={2} display="flex" alignItems="center" gap={1}>
+              <ReceiptIcon />
+              <Typography variant="h6" className="order-summary-title" fontWeight="bold">
+                Order Summary
               </Typography>
             </Box>
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={handleCheckout}
-              className="checkout-button"
-              fullWidth
-              startIcon={<ShoppingCartIcon />}
-            >
-              Proceed to Checkout
-            </Button>
+            <Divider className="summary-divider" />
+            <Box className="summary-details" p={3}>
+              <Box display="flex" justifyContent="space-between" mb={1}>
+                <Typography variant="body1">Subtotal:</Typography>
+                <Typography variant="body1" fontWeight="medium">${subtotal.toFixed(2)}</Typography>
+              </Box>
+              <Box display="flex" justifyContent="space-between" mb={1}>
+                <Typography variant="body1">Shipping:</Typography>
+                <Typography variant="body1" fontWeight="medium" color="success.main">Free</Typography>
+              </Box>
+              <Box display="flex" justifyContent="space-between" mb={2}>
+                <Typography variant="body1">Tax (10%):</Typography>
+                <Typography variant="body1" fontWeight="medium">${tax.toFixed(2)}</Typography>
+              </Box>
+              <Divider className="summary-divider" sx={{ my: 2 }} />
+              <Box display="flex" justifyContent="space-between" mb={3}>
+                <Typography variant="h6" fontWeight="bold">Total:</Typography>
+                <Typography variant="h6" color="primary.main" fontWeight="bold">${total.toFixed(2)}</Typography>
+              </Box>
+              
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={handleCheckout}
+                className="checkout-button"
+                fullWidth
+                startIcon={<ShoppingCartIcon />}
+                disabled={isProcessing}
+                sx={{ 
+                  py: 1.5, 
+                  fontSize: '1rem',
+                  boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
+                  '&:hover': {
+                    boxShadow: '0 6px 12px rgba(0,0,0,0.15)',
+                  }
+                }}
+              >
+                {isProcessing ? 'Processing...' : 'Proceed to Checkout'}
+              </Button>
+              
+              <Box mt={3} p={2} bgcolor="grey.100" borderRadius={1}>
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  <CheckCircleIcon fontSize="small" sx={{ verticalAlign: 'middle', mr: 0.5, color: 'success.main' }} />
+                  Secure Checkout
+                </Typography>
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  <LocalShippingIcon fontSize="small" sx={{ verticalAlign: 'middle', mr: 0.5 }} />
+                  Free Shipping on All Orders
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  <PaymentIcon fontSize="small" sx={{ verticalAlign: 'middle', mr: 0.5 }} />
+                  Multiple Payment Options
+                </Typography>
+              </Box>
+            </Box>
           </Paper>
         </Grid>
       </Grid>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import axios from 'axios';
 import config from '../config';
+import * as apiService from '../services/api';
 import './AdminDashboard.css';
 
 function AdminDashboard() {
@@ -9,20 +9,24 @@ function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
   const [products, setProducts] = useState([]);
   const [transactions, setTransactions] = useState([]);
+  const [bills, setBills] = useState([]);
   const [stats, setStats] = useState({
     totalProducts: 0,
     totalSales: 0,
     lowStockItems: 0,
-    pendingOrders: 0
+    pendingOrders: 0,
+    totalBills: 0
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [dateFilter, setDateFilter] = useState('all');
   const [selectedTransaction, setSelectedTransaction] = useState(null);
+  const [selectedBill, setSelectedBill] = useState(null);
 
   useEffect(() => {
     if (activeTab === 'overview' || activeTab === 'billing') {
       fetchTransactions();
+      fetchBills();
     }
     if (activeTab === 'overview' || activeTab === 'products') {
       fetchProducts();
@@ -32,14 +36,14 @@ function AdminDashboard() {
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${config.API_BASE_URL}/api/products`);
-      setProducts(response.data);
+      const response = await apiService.getProducts();
+      setProducts(response);
       
       // Calculate stats
-      const lowStock = response.data.filter(p => p.stock && p.stock < 5).length;
+      const lowStock = response.filter(p => p.stock && p.stock < 5).length;
       setStats(prev => ({
         ...prev,
-        totalProducts: response.data.length,
+        totalProducts: response.length,
         lowStockItems: lowStock
       }));
     } catch (err) {
@@ -52,6 +56,7 @@ function AdminDashboard() {
   const fetchTransactions = async () => {
     try {
       setLoading(true);
+      // Use apiService here when added
       const token = localStorage.getItem('chainbazzar_auth_token');
       
       if (!token) {
@@ -85,7 +90,7 @@ function AdminDashboard() {
       }
 
       console.log('Fetching transactions from:', url);
-      const response = await axios.get(url, { headers });
+      const response = await apiService.get(url, { headers });
       
       console.log('Transactions response:', response.data);
       setTransactions(response.data);
@@ -108,10 +113,34 @@ function AdminDashboard() {
     }
   };
 
+  const fetchBills = async () => {
+    try {
+      setLoading(true);
+      const response = await apiService.getAllBills();
+      setBills(response.data || []);
+      
+      // Calculate stats
+      const totalBillsAmount = response.data.reduce((sum, bill) => sum + (bill.total || 0), 0);
+      
+      setStats(prev => ({
+        ...prev,
+        totalBills: response.data.length,
+        totalSales: totalBillsAmount
+      }));
+      
+      setError(null);
+    } catch (err) {
+      setError('Error fetching bills');
+      console.error('Error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleViewTransaction = async (transactionId) => {
     try {
       const token = localStorage.getItem('chainbazzar_auth_token');
-      const response = await axios.get(`${config.API_BASE_URL}/api/billing/${transactionId}`, {
+      const response = await apiService.get(`${config.API_BASE_URL}/api/billing/${transactionId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setSelectedTransaction(response.data);
@@ -123,7 +152,7 @@ function AdminDashboard() {
   const handleUpdateStatus = async (transactionId, newStatus) => {
     try {
       const token = localStorage.getItem('chainbazzar_auth_token');
-      await axios.patch(
+      await apiService.patch(
         `${config.API_BASE_URL}/api/billing/${transactionId}/status`,
         { status: newStatus },
         { headers: { Authorization: `Bearer ${token}` } }
@@ -142,7 +171,7 @@ function AdminDashboard() {
       // For now, we'll generate a fake hash
       const txHash = '0x' + Array(64).fill(0).map(() => Math.floor(Math.random() * 16).toString(16)).join('');
       
-      await axios.post(
+      await apiService.post(
         `${config.API_BASE_URL}/api/billing/${transactionId}/blockchain`,
         { txHash },
         { headers: { Authorization: `Bearer ${token}` } }
@@ -199,7 +228,7 @@ function AdminDashboard() {
   const handleRemoveProduct = async (productId) => {
     try {
       const token = localStorage.getItem('chainbazzar_auth_token');
-      await axios.delete(
+      await apiService.delete_(
         `${config.API_BASE_URL}/api/products/${productId}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -212,7 +241,7 @@ function AdminDashboard() {
   const handleUpdateStock = async (productId, newStock) => {
     try {
       const token = localStorage.getItem('chainbazzar_auth_token');
-      await axios.patch(
+      await apiService.patch(
         `${config.API_BASE_URL}/api/products/${productId}`,
         { stock: newStock },
         { headers: { Authorization: `Bearer ${token}` } }
@@ -221,6 +250,14 @@ function AdminDashboard() {
     } catch (err) {
       console.error('Error updating stock:', err);
     }
+  };
+
+  const handleViewBill = (bill) => {
+    setSelectedBill(bill);
+  };
+
+  const handleCloseBillDetails = () => {
+    setSelectedBill(null);
   };
 
   if (!(user?.isAdmin || user?.role === 'admin')) {
@@ -280,8 +317,8 @@ function AdminDashboard() {
                 <p className="stat-number">{stats.lowStockItems}</p>
               </div>
               <div className="stat-card">
-                <h3>Pending Orders</h3>
-                <p className="stat-number">{stats.pendingOrders}</p>
+                <h3>Total Bills</h3>
+                <p className="stat-number">{stats.totalBills}</p>
               </div>
             </div>
             <div className="recent-activity">
@@ -392,7 +429,7 @@ function AdminDashboard() {
         {activeTab === 'billing' && (
           <div className="admin-section billing-section">
             <div className="section-header">
-              <h2>Billing & Transactions</h2>
+              <h2>Billing & Invoices</h2>
               <div className="filters">
                 <select 
                   value={dateFilter} 
@@ -411,74 +448,49 @@ function AdminDashboard() {
             </div>
             
             {loading ? (
-              <div className="loading">Loading transactions...</div>
+              <div className="loading">Loading billing data...</div>
             ) : error ? (
-              <div className="error">{error}</div>
-            ) : transactions.length === 0 ? (
-              <div className="no-data">No transactions found.</div>
+              <div className="error-message">{error}</div>
+            ) : bills.length === 0 ? (
+              <div className="no-data">No bills found for the selected period.</div>
             ) : (
-              <div className="transactions-container">
-                <table className="transactions-table">
+              <div className="bills-table-container">
+                <table className="billing-table">
                   <thead>
                     <tr>
+                      <th>Invoice #</th>
                       <th>Date</th>
-                      <th>Order ID</th>
                       <th>Customer</th>
-                      <th>Amount</th>
+                      <th>Items</th>
+                      <th>Subtotal</th>
+                      <th>Tax</th>
+                      <th>Total</th>
                       <th>Status</th>
-                      <th>Blockchain</th>
                       <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {transactions.map(transaction => (
-                      <tr key={transaction._id}>
-                        <td>{new Date(transaction.createdAt).toLocaleDateString()}</td>
-                        <td className="order-id">{transaction._id}</td>
-                        <td>{transaction.user?.name || transaction.user?.username || 'Unknown'}</td>
-                        <td>${transaction.totalAmount?.toFixed(2) || '0.00'}</td>
+                    {bills.map(bill => (
+                      <tr key={bill._id}>
+                        <td>{bill.invoiceNumber || `INV-${bill._id.substr(-6)}`}</td>
+                        <td>{new Date(bill.date || bill.createdAt).toLocaleDateString()}</td>
+                        <td>{bill.userId || 'Anonymous'}</td>
+                        <td>{bill.items?.length || 0} items</td>
+                        <td>${bill.subtotal?.toFixed(2) || '0.00'}</td>
+                        <td>${bill.tax?.toFixed(2) || '0.00'}</td>
+                        <td className="amount-cell">${bill.total?.toFixed(2) || '0.00'}</td>
                         <td>
-                          <span className={`status-badge status-${transaction.status}`}>
-                            {transaction.status}
+                          <span className={`status-badge status-${bill.status?.toLowerCase() || 'pending'}`}>
+                            {bill.status || 'Pending'}
                           </span>
                         </td>
                         <td>
-                          {transaction.blockchainTxId ? (
-                            <span className="blockchain-verified">
-                              <span className="blockchain-icon">✓</span>
-                              Verified
-                            </span>
-                          ) : (
-                            <span className="blockchain-unverified">
-                              Pending
-                            </span>
-                          )}
-                        </td>
-                        <td className="actions">
                           <button 
-                            className="view-btn"
-                            onClick={() => handleViewTransaction(transaction._id)}
+                            className="action-btn view-btn"
+                            onClick={() => handleViewBill(bill)}
                           >
-                            View
+                            View Details
                           </button>
-                          <select 
-                            value={transaction.status}
-                            onChange={(e) => handleUpdateStatus(transaction._id, e.target.value)}
-                            className="status-select"
-                          >
-                            <option value="pending">Pending</option>
-                            <option value="processing">Processing</option>
-                            <option value="completed">Completed</option>
-                            <option value="cancelled">Cancelled</option>
-                          </select>
-                          {!transaction.blockchainTxId && (
-                            <button 
-                              className="blockchain-btn"
-                              onClick={() => handleRecordBlockchain(transaction._id)}
-                            >
-                              Record on Blockchain
-                            </button>
-                          )}
                         </td>
                       </tr>
                     ))}
@@ -487,74 +499,80 @@ function AdminDashboard() {
               </div>
             )}
             
-            {selectedTransaction && (
-              <div className="transaction-modal">
-                <div className="modal-content">
+            {selectedBill && (
+              <div className="modal-overlay">
+                <div className="bill-details-modal">
                   <div className="modal-header">
-                    <h3>Transaction Details</h3>
-                    <button className="close-btn" onClick={() => setSelectedTransaction(null)}>×</button>
+                    <h3>Invoice #{selectedBill.invoiceNumber || `INV-${selectedBill._id.substr(-6)}`}</h3>
+                    <button className="close-btn" onClick={handleCloseBillDetails}>×</button>
                   </div>
-                  <div className="modal-body">
-                    <div className="transaction-info">
-                      <p><strong>Order ID:</strong> {selectedTransaction._id}</p>
-                      <p><strong>Date:</strong> {new Date(selectedTransaction.createdAt).toLocaleString()}</p>
-                      <p><strong>Customer:</strong> {selectedTransaction.user?.name || selectedTransaction.user?.username || 'Unknown'}</p>
-                      <p><strong>Status:</strong> {selectedTransaction.status}</p>
-                      <p><strong>Payment Method:</strong> {selectedTransaction.paymentMethod || 'Standard Payment'}</p>
-                      <p><strong>Total Amount:</strong> ${selectedTransaction.totalAmount?.toFixed(2) || '0.00'}</p>
+                  <div className="bill-details">
+                    <div className="bill-summary">
+                      <div className="bill-info">
+                        <p><strong>Date:</strong> {new Date(selectedBill.date || selectedBill.createdAt).toLocaleDateString()}</p>
+                        <p><strong>Order ID:</strong> {selectedBill.orderId}</p>
+                        <p><strong>Status:</strong> {selectedBill.status}</p>
+                      </div>
                       
-                      {selectedTransaction.blockchainTxId && (
-                        <div className="blockchain-details">
-                          <h4>Blockchain Details</h4>
-                          <p><strong>Transaction Hash:</strong> 
-                            <span className="blockchain-hash">{selectedTransaction.blockchainTxId}</span>
-                          </p>
-                          <p><strong>Verification Status:</strong> 
-                            <span className="blockchain-verified-badge">Verified ✓</span>
-                          </p>
-                          <p><strong>Timestamp:</strong> {selectedTransaction.blockchainTimestamp ? 
-                            new Date(selectedTransaction.blockchainTimestamp).toLocaleString() : 'Unknown'}</p>
-                          <div className="blockchain-explainer">
-                            <p>This transaction has been permanently recorded on the blockchain, 
-                            ensuring transparency and immutability. The blockchain serves as an 
-                            unalterable ledger, providing verification of purchase authenticity.</p>
+                      <div className="bill-customer">
+                        <h4>Customer Information</h4>
+                        <p>User ID: {selectedBill.userId}</p>
+                        {selectedBill.shipping && (
+                          <div>
+                            <p>
+                              {selectedBill.shipping.street}, {selectedBill.shipping.city}<br />
+                              {selectedBill.shipping.state}, {selectedBill.shipping.zipCode}<br />
+                              {selectedBill.shipping.country}
+                            </p>
                           </div>
-                        </div>
-                      )}
-                      
-                      <div className="items-list">
-                        <h4>Items</h4>
-                        <table className="items-table">
-                          <thead>
-                            <tr>
-                              <th>Product</th>
-                              <th>Quantity</th>
-                              <th>Price</th>
-                              <th>Subtotal</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {selectedTransaction.items ? (
-                              selectedTransaction.items.map((item, index) => (
-                                <tr key={index}>
-                                  <td>{item.product?.name || 'Unknown Product'}</td>
-                                  <td>{item.quantity}</td>
-                                  <td>${item.price?.toFixed(2) || '0.00'}</td>
-                                  <td>${(item.price * item.quantity).toFixed(2) || '0.00'}</td>
-                                </tr>
-                              ))
-                            ) : (
-                              <tr>
-                                <td colSpan="4">No items found</td>
-                              </tr>
-                            )}
-                          </tbody>
-                        </table>
+                        )}
                       </div>
                     </div>
-                  </div>
-                  <div className="modal-footer">
-                    <button className="close-btn" onClick={() => setSelectedTransaction(null)}>Close</button>
+                    
+                    <div className="bill-items">
+                      <h4>Items</h4>
+                      <table className="items-table">
+                        <thead>
+                          <tr>
+                            <th>Product</th>
+                            <th>Price</th>
+                            <th>Quantity</th>
+                            <th>Total</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {selectedBill.items?.map((item, index) => (
+                            <tr key={index}>
+                              <td>{item.name}</td>
+                              <td>${item.price?.toFixed(2)}</td>
+                              <td>{item.quantity}</td>
+                              <td>${(item.price * item.quantity).toFixed(2)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    
+                    <div className="bill-totals">
+                      <div className="total-line">
+                        <span>Subtotal:</span>
+                        <span>${selectedBill.subtotal?.toFixed(2)}</span>
+                      </div>
+                      <div className="total-line">
+                        <span>Tax:</span>
+                        <span>${selectedBill.tax?.toFixed(2)}</span>
+                      </div>
+                      <div className="total-line total-amount">
+                        <span>Total:</span>
+                        <span>${selectedBill.total?.toFixed(2)}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="bill-actions">
+                      <button className="action-btn print-btn" onClick={() => window.print()}>
+                        Print Invoice
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

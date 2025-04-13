@@ -32,6 +32,7 @@ let mockReviews = [
     timestamp: '2023-10-20T09:15:00.000Z'
   }
 ];
+let mockBills = [];
 
 // Generate a unique order ID
 const generateOrderId = () => {
@@ -180,11 +181,48 @@ export const getSupplyChainEvents = async (productId) => {
   };
 };
 
+// Create a mock bill
+export const createBill = async (billData) => {
+  const newBill = {
+    _id: 'bill_' + Math.random().toString(36).substr(2, 9),
+    ...billData,
+    createdAt: new Date().toISOString(),
+    invoiceNumber: 'INV-' + Date.now().toString().substr(-6)
+  };
+  
+  mockBills.push(newBill);
+  
+  console.log('Mock bill created:', newBill);
+  
+  return {
+    status: 'success',
+    data: newBill
+  };
+};
+
+// Get all bills (for admin)
+export const getAllBills = async () => {
+  return {
+    status: 'success',
+    data: mockBills
+  };
+};
+
+// Get user bills
+export const getUserBills = async (userId) => {
+  const userBills = mockBills.filter(bill => bill.userId === userId);
+  return {
+    status: 'success',
+    data: userBills
+  };
+};
+
 // For debugging
 export const getMockDb = () => {
   return { 
     orders: mockOrders, 
     transactions: mockTransactions,
-    reviews: mockReviews
+    reviews: mockReviews,
+    bills: mockBills
   };
 }; 

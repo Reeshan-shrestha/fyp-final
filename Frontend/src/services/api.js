@@ -108,6 +108,36 @@ export const getSupplyChainEvents = async (productId) => {
   );
 };
 
+// Create a bill
+export const createBill = async (billData) => {
+  return handleApiRequestWithMockFallback(
+    // Real API call
+    (baseUrl) => axios.post(`${baseUrl}/api/bills`, billData),
+    // Mock fallback
+    () => mockApi.createBill(billData)
+  );
+};
+
+// Get all bills for admin
+export const getAllBills = async () => {
+  return handleApiRequestWithMockFallback(
+    // Real API call
+    (baseUrl) => axios.get(`${baseUrl}/api/bills`),
+    // Mock fallback
+    () => mockApi.getAllBills()
+  );
+};
+
+// Get user bills
+export const getUserBills = async (userId) => {
+  return handleApiRequestWithMockFallback(
+    // Real API call
+    (baseUrl) => axios.get(`${baseUrl}/api/users/${userId}/bills`),
+    // Mock fallback
+    () => mockApi.getUserBills(userId)
+  );
+};
+
 // Test connection to backend - used for port detection
 export const testBackendConnection = async (port) => {
   try {
@@ -115,5 +145,46 @@ export const testBackendConnection = async (port) => {
     return response.status === 200;
   } catch (error) {
     return false;
+  }
+};
+
+// General HTTP methods for flexibility
+export const get = async (url, config = {}) => {
+  try {
+    const response = await axios.get(url, config);
+    return response;
+  } catch (error) {
+    console.error('GET request failed:', error);
+    throw error;
+  }
+};
+
+export const post = async (url, data, config = {}) => {
+  try {
+    const response = await axios.post(url, data, config);
+    return response;
+  } catch (error) {
+    console.error('POST request failed:', error);
+    throw error;
+  }
+};
+
+export const patch = async (url, data, config = {}) => {
+  try {
+    const response = await axios.patch(url, data, config);
+    return response;
+  } catch (error) {
+    console.error('PATCH request failed:', error);
+    throw error;
+  }
+};
+
+export const delete_ = async (url, config = {}) => {
+  try {
+    const response = await axios.delete(url, config);
+    return response;
+  } catch (error) {
+    console.error('DELETE request failed:', error);
+    throw error;
   }
 }; 
