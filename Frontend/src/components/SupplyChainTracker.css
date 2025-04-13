@@ -1,0 +1,124 @@
+.supply-chain-tracker {
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 20px 0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.supply-chain-tracker h3 {
+  font-size: 1.2rem;
+  margin-top: 0;
+  margin-bottom: 15px;
+  color: #333;
+}
+
+.blockchain-badge {
+  display: inline-flex;
+  align-items: center;
+  background-color: #4c51bf;
+  color: white;
+  font-size: 0.8rem;
+  padding: 4px 8px;
+  border-radius: 4px;
+  margin-bottom: 15px;
+}
+
+.blockchain-icon {
+  margin-right: 5px;
+  font-size: 0.9rem;
+}
+
+.timeline {
+  position: relative;
+  padding-left: 30px;
+}
+
+.timeline:before {
+  content: '';
+  position: absolute;
+  left: 10px;
+  top: 0;
+  height: 100%;
+  width: 2px;
+  background-color: #e5e7eb;
+}
+
+.timeline-item {
+  position: relative;
+  margin-bottom: 20px;
+}
+
+.timeline-icon {
+  position: absolute;
+  left: -30px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #4c51bf;
+  color: white;
+  border-radius: 50%;
+  font-size: 0.9rem;
+  z-index: 1;
+}
+
+.timeline-content {
+  background-color: white;
+  border-radius: 6px;
+  padding: 15px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.timeline-content h4 {
+  margin-top: 0;
+  margin-bottom: 8px;
+  color: #4c51bf;
+  font-size: 1rem;
+}
+
+.timeline-content p {
+  margin: 5px 0;
+  font-size: 0.9rem;
+}
+
+.location {
+  color: #333;
+  font-weight: 500;
+}
+
+.timestamp, .actor {
+  color: #6b7280;
+}
+
+.transaction-link {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 0.8rem;
+  color: #4c51bf;
+  text-decoration: none;
+}
+
+.transaction-link:hover {
+  text-decoration: underline;
+}
+
+.loading-indicator {
+  text-align: center;
+  color: #6b7280;
+  padding: 15px 0;
+}
+
+.error-message {
+  color: #e53e3e;
+  text-align: center;
+  padding: 15px 0;
+}
+
+.no-events {
+  text-align: center;
+  color: #6b7280;
+  padding: 15px 0;
+  font-style: italic;
+} 

@@ -1,0 +1,250 @@
+.cards {
+  width: 92%;
+  max-width: 1400px;
+  margin: 2.5rem auto;
+  padding: 0 1rem;
+  will-change: transform;
+  background: #ffffff;
+}
+
+.cards__section {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+  will-change: transform;
+  background: #ffffff;
+}
+
+.cards__section h3 {
+  font-size: 2rem;
+  color: #333333;
+  margin-bottom: 2rem;
+  position: relative;
+  padding-bottom: 1rem;
+  font-weight: 600;
+  text-align: center;
+  will-change: transform;
+}
+
+.cards__section h3::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 4px;
+  background: linear-gradient(to right, #3498db, #2ecc71);
+  border-radius: 2px;
+  will-change: transform;
+}
+
+.cards__container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 2.5rem;
+  padding: 1rem;
+  will-change: transform;
+  background: #ffffff;
+}
+
+.card {
+  background: #ffffff;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  position: relative;
+  cursor: pointer;
+  border: 1px solid #e0e0e0;
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+.card:hover {
+  transform: translateY(-8px) translateZ(0);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+}
+
+.card__image {
+  position: relative;
+  padding-bottom: 75%;
+  overflow: hidden;
+  background: #f8f9fa;
+  will-change: transform;
+}
+
+.card__image img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s ease;
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+.card:hover .card__image img {
+  transform: scale(1.1) translateZ(0);
+}
+
+.card__image::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 50%;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.5), transparent);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  will-change: opacity;
+}
+
+.card:hover .card__image::after {
+  opacity: 1;
+}
+
+.card__info {
+  padding: 1.5rem;
+  background: #ffffff;
+  position: relative;
+  will-change: transform;
+}
+
+.card__info h4 {
+  font-size: 1.25rem;
+  color: #333333;
+  margin: 0 0 0.75rem;
+  font-weight: 600;
+  line-height: 1.4;
+  will-change: transform;
+}
+
+.card__info p {
+  color: #666666;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  margin: 0.75rem 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  will-change: transform;
+}
+
+.card__price {
+  font-size: 1.5rem;
+  color: #e94560;
+  font-weight: 700;
+  margin: 1rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  will-change: transform;
+}
+
+.card__price::before {
+  content: '$';
+  font-size: 1rem;
+  color: #666666;
+}
+
+.card__rating {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 1rem 0;
+  will-change: transform;
+}
+
+.star {
+  color: #f1c40f;
+  font-size: 1.1rem;
+  will-change: transform;
+}
+
+.stock-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  border-radius: 50px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin-top: 1rem;
+  will-change: transform;
+}
+
+.stock-status::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 0.5rem;
+  will-change: transform;
+}
+
+.in-stock {
+  background: rgba(46, 125, 50, 0.1);
+  color: #2ecc71;
+}
+
+.in-stock::before {
+  background: #2ecc71;
+}
+
+.out-of-stock {
+  background: rgba(198, 40, 40, 0.1);
+  color: #e74c3c;
+}
+
+.out-of-stock::before {
+  background: #e74c3c;
+}
+
+/* Card Hover Animation */
+.card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    800px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+    rgba(0, 0, 0, 0.05),
+    transparent 40%
+  );
+  z-index: 3;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  will-change: opacity;
+  pointer-events: none;
+}
+
+.card:hover::before {
+  opacity: 1;
+}
+
+/* Add a light background to the entire page */
+body {
+  background: #ffffff;
+  min-height: 100vh;
+  will-change: transform;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .cards__section {
+    padding: 1rem;
+  }
+
+  .cards__section h3 {
+    font-size: 1.5rem;
+  }
+
+  .cards__container {
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1.5rem;
+  }
+} 

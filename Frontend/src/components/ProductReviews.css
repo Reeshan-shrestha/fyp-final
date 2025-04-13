@@ -1,0 +1,195 @@
+.product-reviews {
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 20px 0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.product-reviews h3 {
+  font-size: 1.2rem;
+  margin-top: 0;
+  margin-bottom: 15px;
+  color: #333;
+}
+
+.review-stats {
+  background-color: white;
+  border-radius: 6px;
+  padding: 15px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.stats-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.stats-content h4 {
+  font-size: 1rem;
+  margin: 0 0 5px 0;
+  color: #333;
+}
+
+.stats-summary {
+  font-size: 0.9rem;
+  color: #6b7280;
+  margin: 0;
+}
+
+.stats-percentage {
+  text-align: right;
+}
+
+.percentage-value {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #4c51bf;
+}
+
+.percentage-label {
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.verification-progress {
+  height: 8px;
+  background-color: #e5e7eb;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background-color: #4c51bf;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.review-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.review-item {
+  background-color: white;
+  border-radius: 6px;
+  padding: 15px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.review-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.review-rating {
+  display: flex;
+}
+
+.star {
+  color: #d1d5db;
+  font-size: 1.2rem;
+}
+
+.star.filled {
+  color: #fbbf24;
+}
+
+.reviewer-name {
+  font-weight: 500;
+  color: #4b5563;
+}
+
+.review-comment {
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: #1f2937;
+  margin-bottom: 10px;
+}
+
+.review-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.85rem;
+}
+
+.review-date {
+  color: #6b7280;
+}
+
+.verification-badges {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.badge {
+  display: flex;
+  align-items: center;
+  padding: 3px 6px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+}
+
+.badge-icon {
+  margin-right: 4px;
+}
+
+.blockchain-verified {
+  background-color: #c7d2fe;
+  color: #4338ca;
+}
+
+.purchase-verified {
+  background-color: #d1fae5;
+  color: #047857;
+}
+
+.blockchain-link {
+  color: #4c51bf;
+  text-decoration: none;
+  font-size: 0.75rem;
+}
+
+.blockchain-link:hover {
+  text-decoration: underline;
+}
+
+.loading-indicator {
+  text-align: center;
+  color: #6b7280;
+  padding: 15px 0;
+}
+
+.error-message {
+  color: #e53e3e;
+  text-align: center;
+  padding: 15px 0;
+}
+
+.no-reviews {
+  text-align: center;
+  color: #6b7280;
+  padding: 15px 0;
+  font-style: italic;
+}
+
+@media (max-width: 640px) {
+  .review-meta {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .verification-badges {
+    margin-left: 0;
+  }
+} 

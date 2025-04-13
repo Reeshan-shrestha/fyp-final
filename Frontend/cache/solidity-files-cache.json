@@ -1,0 +1,40 @@
+{
+  "_format": "hh-sol-cache-2",
+  "files": {
+    "/Users/lucyynnn/Desktop/College /Year 3/FYP/FYP Project-Code/Verity/Frontend/Verity-Client/contracts/ChainBazzar.sol": {
+      "lastModificationDate": 1742564997720,
+      "contentHash": "88c2a1859ce3105bcf68fdb39b4891b9",
+      "sourceName": "contracts/ChainBazzar.sol",
+      "solcConfig": {
+        "version": "0.8.17",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.9"
+      ],
+      "artifacts": [
+        "ChainBazzar"
+      ]
+    }
+  }
+}

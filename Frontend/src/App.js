@@ -1,0 +1,84 @@
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { ThemeProvider, createTheme } from '@mui/material/styles';
+import CssBaseline from '@mui/material/CssBaseline';
+import { AuthProvider } from './context/AuthContext';
+import { useAuth } from './context/AuthContext';
+import { CartProvider } from './context/CartContext';
+import Navigation from './components/Navigation';
+import Home from './components/Home';
+import ProductList from './components/ProductList';
+import ProductDetail from './components/ProductDetail';
+import AddProduct from './components/AddProduct';
+import SignIn from './components/SignIn';
+import SignUp from './components/SignUp';
+import AdminDashboard from './components/AdminDashboard';
+import DevelopmentBanner from './components/DevelopmentBanner';
+import Cart from './components/Cart';
+import './App.css';
+
+// Protected route component
+const ProtectedRoute = ({ children }) => {
+  const { authenticated, guestMode } = useAuth();
+  
+  // Redirect to sign in if not authenticated or in guest mode
+  if (!authenticated || guestMode) {
+    // Redirect to sign in, remembering the current path
+    return <Navigate to={`/signin?returnTo=${encodeURIComponent(window.location.pathname)}`} />;
+  }
+  
+  return children;
+};
+
+const theme = createTheme({
+  palette: {
+    primary: {
+      main: '#2563eb',
+    },
+    secondary: {
+      main: '#64748b',
+    },
+    background: {
+      default: '#f8fafc',
+    },
+  },
+  typography: {
+    fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
+  },
+});
+
+const App = () => {
+  return (
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <AuthProvider>
+        <CartProvider>
+          <Router>
+            <div className="app">
+              <Navigation />
+              <main className="main-content">
+                <Routes>
+                  <Route path="/" element={<Home />} />
+                  <Route path="/products" element={<ProductList />} />
+                  <Route path="/product/:id" element={<ProductDetail />} />
+                  <Route path="/add-product" element={
+                    <ProtectedRoute>
+                      <AddProduct />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/signin" element={<SignIn />} />
+                  <Route path="/signup" element={<SignUp />} />
+                  <Route path="/admin" element={<AdminDashboard />} />
+                  <Route path="/cart" element={<Cart />} />
+                </Routes>
+              </main>
+              <DevelopmentBanner />
+            </div>
+          </Router>
+        </CartProvider>
+      </AuthProvider>
+    </ThemeProvider>
+  );
+};
+
+export default App;
