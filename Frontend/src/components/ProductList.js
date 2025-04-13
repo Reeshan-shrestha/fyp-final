@@ -30,12 +30,14 @@ const ProductList = () => {
   const fetchProducts = useCallback(async () => {
     try {
       setLoading(true);
+      console.log('Fetching products with filters:', filters);
       let productsData = await apiService.getProducts(filters);
+      console.log('Received products:', productsData);
       
       // Filter products based on category if not 'all'
       if (filters.category !== 'all') {
         productsData = productsData.filter(product => 
-          product.category.toLowerCase() === filters.category.toLowerCase()
+          product.category?.toLowerCase() === filters.category.toLowerCase()
         );
       }
       
@@ -52,8 +54,8 @@ const ProductList = () => {
       });
       
     } catch (err) {
-      setError('Failed to fetch products. Please try again later.');
       console.error('Error fetching products:', err);
+      setError('Failed to fetch products. Please try again later.');
     } finally {
       setLoading(false);
     }
@@ -62,6 +64,119 @@ const ProductList = () => {
   useEffect(() => {
     fetchProducts();
   }, [fetchProducts]);
+
+  // Get image source with fallback handling
+  const getImageSource = (product) => {
+    const productId = product._id || product.id;
+    if (imageErrors[productId] || !product.imageUrl) {
+      // Use category-specific fallback images with better Unsplash photos
+      const categoryFallbacks = {
+        'electronics': 'https://images.unsplash.com/photo-1550009158-9ebf69173e03?auto=format&fit=crop&w=500&q=60',
+        'clothing': 'https://images.unsplash.com/photo-1542060748-10c28b62716f?auto=format&fit=crop&w=500&q=60',
+        'food': 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=500&q=60',
+        'other': 'https://images.unsplash.com/photo-1523381294911-8d3cead13475?auto=format&fit=crop&w=500&q=60'
+      };
+      return categoryFallbacks[product.category?.toLowerCase()] || 
+        'https://images.unsplash.com/photo-1523381294911-8d3cead13475?auto=format&fit=crop&w=500&q=60';
+    }
+    return product.imageUrl;
+  };
+
+  // Render products section
+  const renderProducts = () => {
+    if (products.length === 0 && !loading) {
+      return (
+        <div className="no-products">
+          <p>No products found matching your criteria.</p>
+          <button 
+            onClick={() => setFilters({
+              category: 'all',
+              sortBy: 'newest',
+              verifiedOnly: false
+            })}
+            className="reset-filters-btn"
+          >
+            Reset Filters
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="products-grid">
+        {products.map((product) => {
+          const productId = product._id || product.id;
+          const isAnimated = animatedProducts.includes(productId);
+          
+          return (
+            <div 
+              key={productId}
+              className={`product-card ${isAnimated ? 'show' : ''}`}
+            >
+              <div className="product-image-container">
+                <Link to={`/product/${productId}`}>
+                  <img 
+                    src={getImageSource(product)} 
+                    alt={product.name}
+                    className="product-image"
+                    onError={() => handleImageError(productId)}
+                  />
+                  {product.verified && (
+                    <div className="verified-badge">
+                      <span>✓</span> Verified
+                    </div>
+                  )}
+                </Link>
+              </div>
+              
+              <div className="product-details">
+                <Link to={`/product/${productId}`} className="product-name">
+                  {product.name}
+                </Link>
+                
+                <div className="product-meta">
+                  <span className="product-category">{product.category}</span>
+                  <span className="product-seller">by {product.seller}</span>
+                </div>
+                
+                <div className="product-price">
+                  ${product.price?.toFixed(2)}
+                </div>
+                
+                <div className="product-actions">
+                  <Link to={`/product/${productId}`} className="view-details-btn">
+                    View Details
+                  </Link>
+                  
+                  <button 
+                    className="buy-btn"
+                    onClick={(e) => handleBuyNow(e, productId)}
+                    disabled={processingPurchase === productId}
+                  >
+                    {processingPurchase === productId ? 'Processing...' : 'Buy Now'}
+                  </button>
+                </div>
+                
+                {purchaseErrors[productId] && (
+                  <div className="error-message">
+                    {purchaseErrors[productId]}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+  
+  const handleImageError = (productId) => {
+    console.log(`Image failed to load for product ${productId}, using fallback`);
+    setImageErrors(prev => ({
+      ...prev,
+      [productId]: true
+    }));
+  };
 
   const handleFilterChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -125,31 +240,6 @@ const ProductList = () => {
       setProcessingPurchase(null);
     }
   };
-  
-  const handleImageError = (productId) => {
-    console.log(`Image failed to load for product ${productId}, using fallback`);
-    setImageErrors(prev => ({
-      ...prev,
-      [productId]: true
-    }));
-  };
-  
-  // Get image source with fallback handling
-  const getImageSource = (product) => {
-    const productId = product._id || product.id;
-    if (imageErrors[productId] || !product.imageUrl) {
-      // Use category-specific fallback images with better Unsplash photos
-      const categoryFallbacks = {
-        'electronics': 'https://images.unsplash.com/photo-1550009158-9ebf69173e03?auto=format&fit=crop&w=500&q=60',
-        'clothing': 'https://images.unsplash.com/photo-1542060748-10c28b62716f?auto=format&fit=crop&w=500&q=60',
-        'food': 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=500&q=60',
-        'other': 'https://images.unsplash.com/photo-1523381294911-8d3cead13475?auto=format&fit=crop&w=500&q=60'
-      };
-      return categoryFallbacks[product.category?.toLowerCase()] || 
-        'https://images.unsplash.com/photo-1523381294911-8d3cead13475?auto=format&fit=crop&w=500&q=60';
-    }
-    return product.imageUrl;
-  };
 
   // Format price with commas for thousands
   const formatPrice = (price) => {
@@ -200,42 +290,43 @@ const ProductList = () => {
             className={`category-btn ${activeCategory === 'all' ? 'active' : ''}`}
             onClick={() => handleFilterChange({ target: { name: 'category', value: 'all' } })}
           >
-            All Categories
+            All
           </button>
+          
           {categories.map(category => (
             <button
               key={category.id}
               className={`category-btn ${activeCategory === category.id ? 'active' : ''}`}
               onClick={() => handleFilterChange({ target: { name: 'category', value: category.id } })}
             >
-              <span className="category-icon">{category.icon}</span>
-              {category.name}
+              {category.icon} {category.name}
             </button>
           ))}
         </div>
         
-        <div className="filter-controls">
-          <div className="filter-item">
-            <label htmlFor="sortBy">Sort by:</label>
+        <div className="secondary-filters">
+          <div className="sort-filter">
+            <label htmlFor="sortBy">Sort by</label>
             <select 
               id="sortBy" 
               name="sortBy" 
-              value={filters.sortBy} 
+              value={filters.sortBy}
               onChange={handleFilterChange}
             >
-              <option value="newest">Newest First</option>
-              <option value="oldest">Oldest First</option>
-              <option value="price_asc">Price: Low to High</option>
-              <option value="price_desc">Price: High to Low</option>
+              {config.SORT_OPTIONS.map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
             </select>
           </div>
           
-          <div className="filter-item checkbox">
-            <input 
-              type="checkbox" 
-              id="verifiedOnly" 
-              name="verifiedOnly" 
-              checked={filters.verifiedOnly} 
+          <div className="verified-filter">
+            <input
+              type="checkbox"
+              id="verifiedOnly"
+              name="verifiedOnly"
+              checked={filters.verifiedOnly}
               onChange={handleFilterChange}
             />
             <label htmlFor="verifiedOnly">Verified Products Only</label>
@@ -245,78 +336,7 @@ const ProductList = () => {
       
       {error && <div className="error-message">{error}</div>}
       
-      {products.length === 0 && !loading ? (
-        <div className="no-products">
-          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M20 5H4C2.9 5 2 5.9 2 7V17C2 18.1 2.9 19 4 19H20C21.1 19 22 18.1 22 17V7C22 5.9 21.1 5 20 5Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            <path d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 9 10.3431 9 12C9 13.6569 10.3431 15 12 15Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-          <p>No products found in {activeCategory === 'all' ? 'any category' : `the ${activeCategory} category`}.</p>
-          <button className="btn btn-primary mt-4" onClick={() => {
-            setFilters({ category: 'all', sortBy: 'newest', verifiedOnly: false });
-            setActiveCategory('all');
-          }}>
-            Reset Filters
-          </button>
-        </div>
-      ) : (
-        <div className="products-grid">
-          {products.map((product) => {
-            const productId = product._id || product.id;
-            const isAnimated = animatedProducts.includes(productId);
-            
-            return (
-              <div 
-                key={productId} 
-                className={`product-card ${isAnimated ? 'animated' : ''} ${processingPurchase === productId ? 'processing' : ''}`}
-              >
-                <Link to={`/product/${productId}`} className="product-image-container">
-                  <img 
-                    src={getImageSource(product)} 
-                    alt={product.name} 
-                    className="product-image"
-                    onError={() => handleImageError(productId)}
-                    loading="lazy"
-                  />
-                  {product.verified && (
-                    <div className="verified-badge" title="Blockchain Verified">
-                      <span className="verified-icon">✓</span>
-                    </div>
-                  )}
-                </Link>
-                
-                <div className="product-details">
-                  <Link to={`/product/${productId}`} className="product-title">
-                    {product.name}
-                  </Link>
-                  
-                  <div className="product-seller">
-                    Seller: {product.sellerName || (typeof product.seller === 'string' ? product.seller : product.seller?.username) || 'Unknown'}
-                  </div>
-                  
-                  <div className="product-price">${formatPrice(product.price)}</div>
-                  
-                  <p className="product-description">{product.description}</p>
-                </div>
-                
-                <div className="product-actions">
-                  {purchaseErrors[productId] && (
-                    <div className="purchase-error">{purchaseErrors[productId]}</div>
-                  )}
-                  
-                  <button 
-                    className={`buy-now-btn ${processingPurchase === productId ? 'processing' : ''}`}
-                    onClick={(e) => handleBuyNow(e, productId)}
-                    disabled={processingPurchase !== null}
-                  >
-                    {processingPurchase === productId ? 'Processing...' : 'Buy Now'}
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+      {renderProducts()}
     </div>
   );
 };
