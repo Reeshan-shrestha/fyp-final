@@ -143,8 +143,8 @@ const Cart = () => {
         severity: 'success'
       });
       
-      // Navigate to order confirmation page
-      navigate('/order-confirmation', { 
+      // Navigate to thank you page
+      navigate('/thank-you', { 
         state: { 
           order: orderResponse.data,
           bill: billResponse.data,

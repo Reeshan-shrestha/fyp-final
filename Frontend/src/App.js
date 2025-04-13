@@ -15,6 +15,8 @@ import SignUp from './components/SignUp';
 import AdminDashboard from './components/AdminDashboard';
 import DevelopmentBanner from './components/DevelopmentBanner';
 import Cart from './components/Cart';
+import OrderConfirmation from './components/OrderConfirmation';
+import ThankYouPage from './components/ThankYouPage';
 import './App.css';
 
 // Protected route component
@@ -70,6 +72,8 @@ const App = () => {
                   <Route path="/signup" element={<SignUp />} />
                   <Route path="/admin" element={<AdminDashboard />} />
                   <Route path="/cart" element={<Cart />} />
+                  <Route path="/order-confirmation" element={<OrderConfirmation />} />
+                  <Route path="/thank-you" element={<ThankYouPage />} />
                 </Routes>
               </main>
               <DevelopmentBanner />
