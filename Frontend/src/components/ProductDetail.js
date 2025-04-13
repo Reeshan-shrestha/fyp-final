@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import { 
   Container, 
   Grid, 
@@ -29,6 +28,7 @@ import VerifiedIcon from '@mui/icons-material/Verified';
 import SupplyChainTracker from './SupplyChainTracker';
 import ProductReviews from './ProductReviews';
 import { useCart } from '../context/CartContext';
+import * as apiService from '../services/api';
 
 const ProductImage = styled(CardMedia)(({ theme }) => ({
   height: 400,
@@ -56,8 +56,10 @@ const ProductDetail = ({ user }) => {
   useEffect(() => {
     const fetchProduct = async () => {
       try {
-        const response = await axios.get(`http://localhost:3005/api/products/${id}`);
-        setProduct(response.data);
+        console.log(`Fetching product details for ID: ${id}`);
+        const productData = await apiService.getProduct(id);
+        console.log('Product data:', productData);
+        setProduct(productData);
         setLoading(false);
       } catch (error) {
         console.error('Error fetching product:', error);
@@ -122,7 +124,7 @@ const ProductDetail = ({ user }) => {
         <Grid item xs={12} md={6}>
           <Card elevation={0} sx={{ bgcolor: 'transparent' }}>
             <ProductImage
-              image={product.image}
+              image={product.imageUrl || product.image}
               title={product.name}
               onError={(e) => {
                 e.target.src = 'https://via.placeholder.com/400x400?text=No+Image';
@@ -141,7 +143,7 @@ const ProductDetail = ({ user }) => {
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
               <Rating value={product.rating || 0} precision={0.5} readOnly />
               <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
-                ({product.reviews?.length || 0} reviews)
+                ({product.numReviews || product.reviews?.length || 0} reviews)
               </Typography>
             </Box>
 
@@ -168,9 +170,18 @@ const ProductDetail = ({ user }) => {
             </Box>
 
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-              <VerifiedIcon color="success" sx={{ mr: 1 }} />
+              <VerifiedIcon color={product.verified ? "success" : "disabled"} sx={{ mr: 1 }} />
               <Typography variant="body2" color="text.secondary">
-                Verified seller
+                {product.verified ? "Verified product" : "Verification pending"}
+              </Typography>
+            </Box>
+
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                Stock: {product.countInStock || 'Unknown'}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Seller: {product.seller || 'Unknown'}
               </Typography>
             </Box>
 
@@ -182,8 +193,9 @@ const ProductDetail = ({ user }) => {
               fullWidth
               sx={{ mb: 2 }}
               onClick={handleAddToCart}
+              disabled={!product.countInStock || product.countInStock <= 0}
             >
-              Add to Cart
+              {!product.countInStock || product.countInStock <= 0 ? 'Out of Stock' : 'Add to Cart'}
             </Button>
 
             <Button

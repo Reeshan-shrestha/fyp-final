@@ -78,6 +78,36 @@ export const getProducts = async (filters = {}) => {
   );
 };
 
+// Get product reviews
+export const getProductReviews = async (productId) => {
+  return handleApiRequestWithMockFallback(
+    // Real API call
+    (baseUrl) => axios.get(`${baseUrl}/api/reviews/${productId}`),
+    // Mock fallback
+    () => mockApi.getProductReviews(productId)
+  );
+};
+
+// Create a product review
+export const createProductReview = async (reviewData) => {
+  return handleApiRequestWithMockFallback(
+    // Real API call
+    (baseUrl) => axios.post(`${baseUrl}/api/reviews`, reviewData),
+    // Mock fallback
+    () => mockApi.createProductReview(reviewData)
+  );
+};
+
+// Get supply chain events
+export const getSupplyChainEvents = async (productId) => {
+  return handleApiRequestWithMockFallback(
+    // Real API call
+    (baseUrl) => axios.get(`${baseUrl}/api/supply-chain/${productId}`),
+    // Mock fallback
+    () => mockApi.getSupplyChainEvents(productId)
+  );
+};
+
 // Test connection to backend - used for port detection
 export const testBackendConnection = async (port) => {
   try {

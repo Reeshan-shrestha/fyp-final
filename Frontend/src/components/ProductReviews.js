@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { 
   Typography, 
   Paper, 
@@ -20,6 +19,7 @@ import PersonIcon from '@mui/icons-material/Person';
 import StoreIcon from '@mui/icons-material/Store';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
+import * as apiService from '../services/api';
 
 const ReviewItem = styled(Box)(({ theme }) => ({
   padding: theme.spacing(2),
@@ -74,8 +74,8 @@ const ProductReviews = ({ productId, user }) => {
   useEffect(() => {
     const fetchReviews = async () => {
       try {
-        const response = await axios.get(`http://localhost:3005/api/reviews/${productId}`);
-        setReviews(response.data.reviews || []);
+        const data = await apiService.getProductReviews(productId);
+        setReviews(data.reviews || []);
         setLoading(false);
       } catch (error) {
         console.error('Error fetching reviews:', error);
@@ -125,11 +125,11 @@ const ProductReviews = ({ productId, user }) => {
         userType: user.role
       };
       
-      await axios.post('http://localhost:3005/api/reviews', reviewData);
+      await apiService.createProductReview(reviewData);
       
       // Refresh reviews
-      const response = await axios.get(`http://localhost:3005/api/reviews/${productId}`);
-      setReviews(response.data.reviews);
+      const data = await apiService.getProductReviews(productId);
+      setReviews(data.reviews);
       
       // Reset the form
       setNewReview({

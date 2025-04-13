@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { 
   Typography, 
   Paper, 
@@ -16,6 +15,7 @@ import TimelineConnector from '@mui/lab/TimelineConnector';
 import TimelineContent from '@mui/lab/TimelineContent';
 import TimelineDot from '@mui/lab/TimelineDot';
 import TimelineOppositeContent from '@mui/lab/TimelineOppositeContent';
+import * as apiService from '../services/api';
 
 // Icons
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
@@ -33,8 +33,8 @@ const SupplyChainTracker = ({ productId }) => {
   useEffect(() => {
     const fetchSupplyChainData = async () => {
       try {
-        const response = await axios.get(`http://localhost:3005/api/supply-chain/${productId}`);
-        setEvents(response.data.events);
+        const data = await apiService.getSupplyChainEvents(productId);
+        setEvents(data.events);
         setLoading(false);
       } catch (error) {
         console.error('Error fetching supply chain data:', error);
