@@ -40,10 +40,10 @@ router.post('/', auth, async (req, res) => {
         return res.status(404).json({ message: `Product ${productId} not found` });
       }
 
-      // Skip stock validation for demo purposes
-      // if (product.countInStock < item.quantity) {
-      //   return res.status(400).json({ message: `Insufficient stock for ${product.name}` });
-      // }
+      // Validate stock availability
+      if (product.countInStock < item.quantity) {
+        return res.status(400).json({ message: `Insufficient stock for ${product.name}` });
+      }
 
       orderItems.push({
         product: productId,
@@ -69,13 +69,13 @@ router.post('/', auth, async (req, res) => {
 
     const createdOrder = await order.save();
 
-    // Update product stock (commented out for demo purposes)
-    // for (const item of items) {
-    //   const productId = item.product || item.productId;
-    //   await Product.findByIdAndUpdate(productId, {
-    //     $inc: { countInStock: -item.quantity }
-    //   });
-    // }
+    // Update product stock
+    for (const item of items) {
+      const productId = item.product || item.productId;
+      await Product.findByIdAndUpdate(productId, {
+        $inc: { countInStock: -item.quantity }
+      });
+    }
 
     res.status(201).json({
       message: 'Order created successfully',

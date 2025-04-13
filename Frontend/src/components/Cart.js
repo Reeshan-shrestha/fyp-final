@@ -49,22 +49,50 @@ const Cart = () => {
   const steps = ['Review Cart', 'Shipping', 'Payment', 'Confirmation'];
 
   const handleCheckout = async () => {
-    if (cart.length === 0) {
+    // Check if user is logged in
+    if (!user) {
       setSnackbar({
         open: true,
-        message: 'Your cart is empty!',
-        severity: 'error'
+        message: 'Please sign in to checkout',
+        severity: 'warning'
       });
+      navigate('/signin', { state: { from: '/cart' } });
       return;
     }
 
-    if (!isAuthenticated) {
+    // Validate stock availability before proceeding
+    try {
+      // Check current stock for all items
+      const stockCheckPromises = cart.map(async (item) => {
+        const currentProduct = await apiService.getProduct(item._id);
+        return {
+          product: currentProduct,
+          cartItem: item,
+          hasEnoughStock: currentProduct.countInStock >= item.quantity
+        };
+      });
+      
+      const stockResults = await Promise.all(stockCheckPromises);
+      
+      // Filter items with insufficient stock
+      const insufficientStockItems = stockResults.filter(item => !item.hasEnoughStock);
+      
+      // If there are items with insufficient stock, show an error and don't proceed
+      if (insufficientStockItems.length > 0) {
+        setSnackbar({
+          open: true,
+          message: `Some items have insufficient stock: ${insufficientStockItems.map(item => item.product.name).join(', ')}`,
+          severity: 'error'
+        });
+        return;
+      }
+    } catch (error) {
+      console.error('Error checking stock:', error);
       setSnackbar({
         open: true,
-        message: 'Please log in to complete your order',
+        message: 'Failed to validate stock. Please try again.',
         severity: 'error'
       });
-      navigate('/login', { state: { from: '/cart' } });
       return;
     }
 
