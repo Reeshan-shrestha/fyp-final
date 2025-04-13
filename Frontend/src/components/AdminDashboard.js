@@ -40,7 +40,7 @@ function AdminDashboard() {
       setProducts(response);
       
       // Calculate stats
-      const lowStock = response.filter(p => p.stock && p.stock < 5).length;
+      const lowStock = response.filter(p => p.countInStock && p.countInStock < 5).length;
       setStats(prev => ({
         ...prev,
         totalProducts: response.length,
@@ -243,7 +243,7 @@ function AdminDashboard() {
       const token = localStorage.getItem('chainbazzar_auth_token');
       await apiService.patch(
         `${config.API_BASE_URL}/api/products/${productId}`,
-        { stock: newStock },
+        { countInStock: parseInt(newStock) },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       fetchProducts(); // Refresh the list
@@ -384,13 +384,14 @@ function AdminDashboard() {
                       <tr key={product._id}>
                         <td>{product.name}</td>
                         <td>{product.category}</td>
-                        <td>${product.price.toFixed(2)}</td>
+                        <td>${(product.price || 0).toFixed(2)}</td>
                         <td>
                           <input 
                             type="number" 
-                            value={product.stock || 0}
+                            value={product.countInStock || 0}
                             onChange={(e) => handleUpdateStock(product._id, e.target.value)}
                             min="0"
+                            className={product.countInStock < 5 ? "low-stock" : ""}
                           />
                         </td>
                         <td>

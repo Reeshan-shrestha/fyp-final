@@ -1013,4 +1013,12 @@
     color: black;
     border-bottom: 2px solid black;
   }
+}
+
+/* Add a new CSS class for low stock indicator */
+.low-stock {
+  background-color: #fff4f4;
+  border: 1px solid #ff4d4d;
+  color: #ff0000;
+  font-weight: bold;
 } 
