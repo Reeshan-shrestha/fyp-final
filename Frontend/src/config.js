@@ -1,5 +1,5 @@
 const config = {
-  API_BASE_URL: 'http://localhost:3005',
+  API_BASE_URL: 'http://localhost:30061',
   IPFS_GATEWAY: 'https://ipfs.io/ipfs',
   SUPPORTED_CATEGORIES: [
     { id: 'electronics', name: 'Electronics', icon: '🔌' },
