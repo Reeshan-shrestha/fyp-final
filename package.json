@@ -3,7 +3,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "start:backend": "cd Backend/ChainBazzar-Server/backend && npm run dev",
+    "start:backend": "cd Backend && npm run dev",
     "start:all": "concurrently \"npm run dev\" \"npm run start:backend\"",
     "lint": "next lint"
   },
