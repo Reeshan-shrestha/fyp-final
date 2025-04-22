@@ -98,9 +98,7 @@ const App = () => {
                   <Route path="/signin" element={<SignIn />} />
                   <Route path="/signup" element={<SignUp />} />
                   <Route path="/admin" element={
-                    <ProtectedRoute>
-                      <Admin />
-                    </ProtectedRoute>
+                    <Navigate to="/admin-dashboard" replace />
                   } />
                   <Route path="/admin-dashboard" element={
                     <AdminRoute>

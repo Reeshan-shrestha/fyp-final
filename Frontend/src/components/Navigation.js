@@ -3,6 +3,10 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
+import HomeIcon from '@mui/icons-material/Home';
+import CategoryIcon from '@mui/icons-material/Category';
+import StorefrontIcon from '@mui/icons-material/Storefront';
+import DashboardIcon from '@mui/icons-material/Dashboard';
 import Badge from '@mui/material/Badge';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
@@ -35,18 +39,17 @@ const Navigation = () => {
   };
 
   const navLinks = [
-    { path: '/', label: 'Home', icon: null },
-    { path: '/products', label: 'Products', icon: null },
+    { path: '/', label: 'Home', icon: <HomeIcon /> },
+    { path: '/products', label: 'Products', icon: <CategoryIcon /> },
     { 
       path: '/cart', 
       label: 'Cart', 
-      icon: null,
+      icon: <ShoppingCartIcon />,
       badge: cart.length
     },
-    ...((user?.role === 'seller' || user?.role === 'admin') ? [{ path: '/sell', label: 'Sell', icon: null }] : []),
+    ...((user?.role === 'seller' || user?.role === 'admin') ? [{ path: '/sell', label: 'Sell', icon: <StorefrontIcon /> }] : []),
     ...(user?.role === 'admin' ? [
-      { path: '/admin', label: 'Admin', icon: null },
-      { path: '/admin-dashboard', label: 'Dashboard', icon: null }
+      { path: '/admin-dashboard', label: 'Admin Dashboard', icon: <DashboardIcon /> }
     ] : [])
   ];
 
@@ -65,6 +68,7 @@ const Navigation = () => {
               to={path}
               className={`nav-link ${location.pathname === path ? 'active' : ''} ${path === '/cart' ? 'cart-link' : ''}`}
             >
+              <span className="nav-icon">{icon}</span>
               {path === '/cart' ? (
                 <Badge 
                   badgeContent={badge} 
@@ -130,6 +134,7 @@ const Navigation = () => {
               className={`mobile-nav-link ${location.pathname === path ? 'active' : ''} ${path === '/cart' ? 'cart-link' : ''}`}
               onClick={() => setIsMobileMenuOpen(false)}
             >
+              <span className="mobile-nav-icon">{icon}</span>
               {path === '/cart' ? (
                 <Badge 
                   badgeContent={badge} 
