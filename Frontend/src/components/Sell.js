@@ -48,26 +48,19 @@ function Sell() {
       
       const sellerId = currentUser._id || currentUser.id;
       console.log('Current seller ID:', sellerId);
+      console.log('Current seller:', currentUser.username);
       
       try {
         const token = localStorage.getItem('chainbazzar_auth_token');
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
         
-        // Use the apiService.getProducts method which has mock fallback built in
-        const productsData = await apiService.getProducts();
+        // Pass the seller ID as a filter parameter
+        const productsData = await apiService.getProducts({ seller: sellerId });
         
-        console.log('All products fetched:', productsData);
-        
-        // Filter products to only show those belonging to the current seller
-        const sellerProducts = productsData.filter(product => {
-          const productSeller = product.seller?._id || product.seller;
-          return productSeller === sellerId;
-        });
-        
-        console.log('Filtered seller products:', sellerProducts);
+        console.log('Seller products fetched:', productsData);
         
         // Map database fields to frontend fields
-        const mappedProducts = sellerProducts.map(product => ({
+        const mappedProducts = productsData.map(product => ({
           ...product,
           stock: product.countInStock || product.stock || 0,
           isVerified: product.verified || product.isVerified || false
@@ -78,17 +71,12 @@ function Sell() {
         console.error('Error fetching products from API, using mock data:', err);
         
         // Fallback to mock data
-        const mockData = mockProducts;
+        // Use the seller username to get the right mock products
+        const mockData = await apiService.getProducts({ seller: currentUser.username || sellerId });
         
-        // Filter mock data to simulate seller's products
-        // For demo purposes, we'll assign first 2 products to each seller in a round-robin fashion
-        const sellerIndex = parseInt(sellerId.replace(/\D/g, '')) % 5 || 0;
-        const startIndex = sellerIndex * 2;
-        const userMockProducts = mockData.slice(startIndex, startIndex + 2);
+        console.log('Using mock products for seller:', mockData);
         
-        console.log(`Using mock products for seller index ${sellerIndex}:`, userMockProducts);
-        
-        setProducts(userMockProducts);
+        setProducts(mockData);
       }
     } catch (err) {
       console.error('Error in fetchProducts:', err);

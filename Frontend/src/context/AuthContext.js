@@ -36,14 +36,20 @@ export const AuthProvider = ({ children }) => {
       const userData = await authService.login(credentials);
       
       if (userData) {
-        // Update state
-        setUser(userData);
+        // Update state with additional seller information if needed
+        const enhancedUserData = {
+          ...userData,
+          // Ensure we have a consistent sellerId format
+          sellerId: userData.sellerId || (userData.role === 'seller' ? `seller_${userData.username}` : null)
+        };
+        
+        setUser(enhancedUserData);
         setGuestMode(false);
         setAuthenticated(true);
         setIsAuthenticated(true);
         
-        console.log('User logged in successfully:', userData);
-        return userData;
+        console.log('User logged in successfully:', enhancedUserData);
+        return enhancedUserData;
       } else {
         throw new Error('Failed to login');
       }

@@ -74,7 +74,13 @@ export const getProducts = async (filters = {}) => {
     // Real API call
     (baseUrl) => axios.get(`${baseUrl}/api/products`, { params: filters }),
     // Mock fallback
-    () => mockProducts.getAllProducts(filters)
+    () => {
+      // If we're looking for a specific seller's products, filter the mock data
+      if (filters.seller) {
+        return mockProducts.getSellerProducts(filters.seller);
+      }
+      return mockProducts.getAllProducts(filters);
+    }
   );
 };
 
