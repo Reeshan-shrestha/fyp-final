@@ -46,16 +46,36 @@ function Sell() {
         return;
       }
       
+      // Get seller identification
       const sellerId = currentUser._id || currentUser.id;
-      console.log('Current seller ID:', sellerId);
-      console.log('Current seller:', currentUser.username);
+      const sellerUsername = currentUser.username;
+      
+      console.log('Current seller:', {
+        id: sellerId,
+        username: sellerUsername,
+        role: currentUser.role,
+        fullUser: currentUser
+      });
       
       try {
+        // Get token for authentication if available
         const token = localStorage.getItem('chainbazzar_auth_token');
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
         
-        // Pass the seller ID as a filter parameter
-        const productsData = await apiService.getProducts({ seller: sellerId });
+        // Determine best seller identifier to use
+        let sellerIdentifier;
+        if (sellerUsername && ['TechVision', 'SportStyle', 'GourmetDelights', 'FashionFusion', 'SmartHome'].includes(sellerUsername)) {
+          // If username matches one of our known sellers, use that
+          sellerIdentifier = sellerUsername;
+        } else {
+          // Otherwise use ID
+          sellerIdentifier = sellerId;
+        }
+        
+        console.log('Using seller identifier for filtering:', sellerIdentifier);
+        
+        // Pass the seller identifier as a filter parameter
+        const productsData = await apiService.getProducts({ seller: sellerIdentifier });
         
         console.log('Seller products fetched:', productsData);
         
@@ -71,8 +91,9 @@ function Sell() {
         console.error('Error fetching products from API, using mock data:', err);
         
         // Fallback to mock data
-        // Use the seller username to get the right mock products
-        const mockData = await apiService.getProducts({ seller: currentUser.username || sellerId });
+        // Use seller username preferentially as it's more stable than IDs
+        const sellerIdentifier = sellerUsername || sellerId;
+        const mockData = await apiService.getProducts({ seller: sellerIdentifier });
         
         console.log('Using mock products for seller:', mockData);
         
@@ -162,12 +183,24 @@ function Sell() {
     try {
       setProductActionInProgress(true);
       
-      // Get current seller ID
+      // Get current seller ID and username
       const sellerId = user?._id || user?.id;
+      const sellerUsername = user?.username;
+      
       if (!sellerId) {
         setProductFormError('You must be logged in as a seller to add products');
         setProductActionInProgress(false);
         return;
+      }
+      
+      // Determine best seller identifier to use
+      let sellerIdentifier;
+      if (sellerUsername && ['TechVision', 'SportStyle', 'GourmetDelights', 'FashionFusion', 'SmartHome'].includes(sellerUsername)) {
+        // If username matches one of our known sellers, use that
+        sellerIdentifier = sellerUsername;
+      } else {
+        // Otherwise use ID
+        sellerIdentifier = sellerId;
       }
       
       const productData = {
@@ -176,10 +209,10 @@ function Sell() {
         // Map frontend fields to database fields
         countInStock: parseInt(productForm.stock),
         verified: false, // New products are unverified by default
-        seller: sellerId
+        seller: sellerIdentifier
       };
       
-      console.log('Adding new product:', productData);
+      console.log('Adding new product for seller:', sellerIdentifier, productData);
       
       try {
         // Try to use the real API
@@ -233,15 +266,30 @@ function Sell() {
     try {
       setProductActionInProgress(true);
       
+      // Get current seller ID and username
+      const sellerId = user?._id || user?.id;
+      const sellerUsername = user?.username;
+      
+      // Determine best seller identifier to use
+      let sellerIdentifier;
+      if (sellerUsername && ['TechVision', 'SportStyle', 'GourmetDelights', 'FashionFusion', 'SmartHome'].includes(sellerUsername)) {
+        // If username matches one of our known sellers, use that
+        sellerIdentifier = sellerUsername;
+      } else {
+        // Otherwise use ID
+        sellerIdentifier = sellerId;
+      }
+      
       const productData = {
         ...productForm,
         price: parseFloat(productForm.price),
         // Map frontend fields to database fields
         countInStock: parseInt(productForm.stock),
-        verified: editingProduct.isVerified || editingProduct.verified // Preserve verification status
+        verified: editingProduct.isVerified || editingProduct.verified, // Preserve verification status
+        seller: sellerIdentifier // Maintain seller association
       };
       
-      console.log(`Updating product ${editingProduct._id}:`, productData);
+      console.log(`Updating product ${editingProduct._id} for seller ${sellerIdentifier}:`, productData);
       
       try {
         // Try to use the real API
@@ -387,6 +435,28 @@ function Sell() {
       <div className="sell-header">
         <h1>Seller Dashboard: {user?.username || 'Seller'}</h1>
         <p>Manage your products and track sales for your store</p>
+      </div>
+
+      <div className="sell-stats">
+        <div className="stat-card">
+          <h3>Store Statistics</h3>
+          <div className="stat-item">
+            <span className="stat-label">Products:</span>
+            <span className="stat-value">{products.length}</span>
+          </div>
+          <div className="stat-item">
+            <span className="stat-label">Verified Products:</span>
+            <span className="stat-value">
+              {products.filter(p => p.isVerified || p.verified).length}
+            </span>
+          </div>
+          <div className="stat-item">
+            <span className="stat-label">Store ID:</span>
+            <span className="stat-value" title={user?._id || user?.id}>
+              {user?.username || 'Unknown'}
+            </span>
+          </div>
+        </div>
       </div>
 
       <div className="sell-actions">

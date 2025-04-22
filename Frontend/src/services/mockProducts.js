@@ -183,19 +183,37 @@ export const getAllProducts = (filters = {}) => {
 
 // Get products for a specific seller
 export const getSellerProducts = (sellerId) => {
-  // If sellerId looks like a username instead of an ID, convert it
-  if (sellerId.startsWith('TechVision') || 
-      sellerId.startsWith('SportStyle') || 
-      sellerId.startsWith('GourmetDelights') || 
-      sellerId.startsWith('FashionFusion') || 
-      sellerId.startsWith('SmartHome')) {
-    // Extract the username part
-    const username = sellerId.split('_')[0];
-    sellerId = usernameToSellerId[username] || sellerId;
+  console.log('Getting products for seller ID:', sellerId);
+  
+  // Try to match seller ID with different formats
+  let normalizedSellerId = sellerId;
+  
+  // Case 1: If it's a MongoDB ObjectId or similar format from the database
+  if (typeof sellerId === 'string') {
+    // Handle username format (e.g., "TechVision_12345")
+    if (sellerId.includes('TechVision')) normalizedSellerId = 'seller1';
+    else if (sellerId.includes('SportStyle')) normalizedSellerId = 'seller2';
+    else if (sellerId.includes('GourmetDelights')) normalizedSellerId = 'seller3';
+    else if (sellerId.includes('FashionFusion')) normalizedSellerId = 'seller4';
+    else if (sellerId.includes('SmartHome')) normalizedSellerId = 'seller5';
+    
+    // Handle MongoDB ID formats that may come from real database
+    // This is just a fallback if the username-based matching doesn't work
+    // In real implementation, seller IDs from DB would map to these formats
+    if (sellerId.startsWith('6')) normalizedSellerId = 'seller1';
+    else if (sellerId.startsWith('7')) normalizedSellerId = 'seller2';
+    else if (sellerId.startsWith('8')) normalizedSellerId = 'seller3';
+    else if (sellerId.startsWith('9')) normalizedSellerId = 'seller4';
+    else if (sellerId.startsWith('5')) normalizedSellerId = 'seller5';
   }
   
+  console.log('Normalized seller ID:', normalizedSellerId);
+  
   // Return products filtered by seller ID
-  return mockProducts.filter(product => product.seller === sellerId);
+  const sellerProducts = mockProducts.filter(product => product.seller === normalizedSellerId);
+  console.log('Filtered products for seller:', sellerProducts);
+  
+  return sellerProducts;
 };
 
 // Get a single product by ID

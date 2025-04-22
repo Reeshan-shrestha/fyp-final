@@ -202,12 +202,30 @@ export const createProduct = async (productData) => {
     (baseUrl) => axios.post(`${baseUrl}/api/products`, productData),
     // Mock fallback
     () => {
+      // Normalize seller information for consistent storage
+      let seller = productData.seller;
+      
+      // Handle different seller ID formats
+      if (typeof seller === 'string') {
+        if (seller.includes('TechVision')) seller = 'seller1';
+        else if (seller.includes('SportStyle')) seller = 'seller2';
+        else if (seller.includes('GourmetDelights')) seller = 'seller3';
+        else if (seller.includes('FashionFusion')) seller = 'seller4';
+        else if (seller.includes('SmartHome')) seller = 'seller5';
+      }
+      
       // Create a mock product with the provided data
       const mockProduct = {
         ...productData,
         _id: 'mock_' + Date.now(),
+        seller: seller, // Normalized seller ID
         createdAt: new Date().toISOString()
       };
+      
+      // Add product to mock data for future queries
+      mockProducts.default.push(mockProduct);
+      
+      console.log('Created mock product:', mockProduct);
       
       // Return mock response
       return { 
