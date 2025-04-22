@@ -43,7 +43,7 @@ const Navigation = () => {
       icon: null,
       badge: cart.length
     },
-    ...((user?.role === 'seller' || user?.role === 'admin') ? [{ path: '/sell', label: 'Sell', icon: null }] : []),
+    ...((user?.role === 'seller' || user?.role === 'admin') ? [{ path: '/add-product', label: 'Sell', icon: null }] : []),
     ...(user?.role === 'admin' ? [{ path: '/admin', label: 'Admin', icon: null }] : [])
   ];
 

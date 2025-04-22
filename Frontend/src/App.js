@@ -17,7 +17,6 @@ import DevelopmentBanner from './components/DevelopmentBanner';
 import Cart from './components/Cart';
 import OrderConfirmation from './components/OrderConfirmation';
 import ThankYouPage from './components/ThankYouPage';
-import Sell from './components/Sell';
 import './App.css';
 
 // Protected route component
@@ -67,11 +66,6 @@ const App = () => {
                   <Route path="/add-product" element={
                     <ProtectedRoute>
                       <AddProduct />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/sell" element={
-                    <ProtectedRoute>
-                      <Sell />
                     </ProtectedRoute>
                   } />
                   <Route path="/signin" element={<SignIn />} />

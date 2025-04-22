@@ -3,7 +3,6 @@ import { useAuth } from '../context/AuthContext';
 import config from '../config';
 import * as apiService from '../services/api';
 import mockProducts from '../services/mockProducts';
-import { Link } from 'react-router-dom';
 import './AdminDashboard.css';
 
 function AdminDashboard() {
@@ -779,9 +778,7 @@ function AdminDashboard() {
           <div className="products-section">
             <div className="section-header">
               <h2>Product Management</h2>
-              <Link to="/sell" className="add-product-link">
-                Go to Sell Page
-              </Link>
+              <button className="add-product-btn" onClick={openAddProductModal}>Add New Product</button>
             </div>
             
             {productActionSuccess && (
