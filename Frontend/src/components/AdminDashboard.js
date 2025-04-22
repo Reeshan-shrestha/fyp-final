@@ -5,6 +5,7 @@ import * as apiService from '../services/api';
 import mockProducts from '../services/mockProducts';
 import { Link } from 'react-router-dom';
 import './AdminDashboard.css';
+import AdminActions from './AdminActions';
 
 function AdminDashboard() {
   const { user } = useAuth();
@@ -267,8 +268,8 @@ function AdminDashboard() {
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
-    // Clear any success messages when changing tabs
-    setProductActionSuccess(null);
+    setSelectedTransaction(null);
+    setSelectedBill(null);
   };
 
   // Product management functions
@@ -678,428 +679,224 @@ function AdminDashboard() {
     setSelectedBill(null);
   };
 
-  if (!(user?.isAdmin || user?.role === 'admin')) {
+  // Check if user is admin
+  const isAdmin = user?.isAdmin || user?.role === 'admin';
+  
+  if (!isAdmin) {
     return (
-      <div className="admin-error">
-        <h2>Access Denied</h2>
-        <p>You don't have permission to access the admin dashboard.</p>
+      <div className="admin-container">
+        <h1>Access Denied</h1>
+        <p>You must be an admin to view this page.</p>
       </div>
     );
   }
-
+  
   return (
     <div className="admin-dashboard">
-      <div className="admin-header">
+      <header className="admin-header">
         <h1>Admin Dashboard</h1>
-        <div className="admin-user-info">
-          <span>Welcome, {user.username || user.name}</span>
-          <span className="admin-badge">Admin</span>
-        </div>
-      </div>
-
+        <p>Welcome, {user?.username || 'Admin'}</p>
+      </header>
+      
       <div className="admin-tabs">
         <button 
-          className={`tab-button ${activeTab === 'overview' ? 'active' : ''}`}
+          className={`admin-tab ${activeTab === 'overview' ? 'active' : ''}`} 
           onClick={() => handleTabChange('overview')}
         >
           Overview
         </button>
         <button 
-          className={`tab-button ${activeTab === 'products' ? 'active' : ''}`}
-          onClick={() => handleTabChange('products')}
+          className={`admin-tab ${activeTab === 'distribution' ? 'active' : ''}`} 
+          onClick={() => handleTabChange('distribution')}
         >
-          Products
+          Product Distribution
         </button>
         <button 
-          className={`tab-button ${activeTab === 'billing' ? 'active' : ''}`}
+          className={`admin-tab ${activeTab === 'billing' ? 'active' : ''}`}
           onClick={() => handleTabChange('billing')}
         >
           Billing
         </button>
+        <button 
+          className={`admin-tab ${activeTab === 'products' ? 'active' : ''}`}
+          onClick={() => handleTabChange('products')}
+        >
+          Products
+        </button>
       </div>
-
+      
       <div className="admin-content">
-        {activeTab === 'overview' && (
-          <div className="overview-section">
-            <div className="stats-grid">
-              <div className="stat-card">
-                <h3>Total Products</h3>
-                <p className="stat-number">{stats.totalProducts}</p>
-              </div>
-              <div className="stat-card">
-                <h3>Total Sales</h3>
-                <p className="stat-number">${stats.totalSales.toFixed(2)}</p>
-              </div>
-              <div className="stat-card">
-                <h3>Low Stock Items</h3>
-                <p className="stat-number">{stats.lowStockItems}</p>
-              </div>
-              <div className="stat-card">
-                <h3>Total Bills</h3>
-                <p className="stat-number">{stats.totalBills}</p>
-              </div>
-            </div>
-            <div className="recent-activity">
-              <h2>Recent Activity</h2>
-              <div className="activity-list">
-                {transactions.slice(0, 5).map((transaction, index) => (
-                  <div key={index} className="activity-item">
-                    <div className="activity-icon">
-                      {transaction.status === 'completed' ? '✅' : 
-                       transaction.status === 'pending' ? '⏳' : 
-                       transaction.status === 'cancelled' ? '❌' : '🔄'}
-                    </div>
-                    <div className="activity-details">
-                      <p className="activity-title">
-                        Order #{transaction._id.substring(0, 8)} - ${transaction.totalAmount?.toFixed(2)}
-                      </p>
-                      <p className="activity-meta">
-                        {new Date(transaction.createdAt).toLocaleString()} • {transaction.user?.name}
-                      </p>
-                    </div>
-                    <div className="activity-status">
-                      <span className={`status-badge ${transaction.status}`}>
-                        {transaction.status.charAt(0).toUpperCase() + transaction.status.slice(1)}
-                      </span>
-                    </div>
+        {loading ? (
+          <div className="loading-spinner">Loading...</div>
+        ) : error ? (
+          <div className="error-message">{error}</div>
+        ) : (
+          <>
+            {activeTab === 'overview' && (
+              <div className="overview-container">
+                <div className="stat-cards">
+                  <div className="stat-card">
+                    <h3>Products</h3>
+                    <p className="stat-value">{stats.totalProducts}</p>
+                    <p className="stat-detail">Low Stock: {stats.lowStockItems}</p>
                   </div>
-                ))}
-                {transactions.length === 0 && !loading && (
-                  <p className="no-data">No recent activity</p>
-                )}
-                {loading && (
-                  <p className="loading">Loading activity...</p>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'products' && (
-          <div className="products-section">
-            <div className="section-header">
-              <h2>Product Management</h2>
-              <Link to="/sell" className="add-product-link">
-                Go to Sell Page
-              </Link>
-            </div>
-            
-            {productActionSuccess && (
-              <div className="success-message">
-                {productActionSuccess}
-                <button className="close-message" onClick={() => setProductActionSuccess(null)}>×</button>
-              </div>
-            )}
-            
-            {error && (
-              <div className="error-message">
-                {error}
-                <button className="close-message" onClick={() => setError(null)}>×</button>
-              </div>
-            )}
-            
-            {loading ? (
-              <div className="loading">Loading products from database...</div>
-            ) : (
-              <div className="products-table-container">
-                <table className="products-table">
-                  <thead>
-                    <tr>
-                      <th>Product Name</th>
-                      <th>Category</th>
-                      <th>Price</th>
-                      <th>Stock</th>
-                      <th>Verified</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {products.map(product => (
-                      <tr key={product._id}>
-                        <td>{product.name}</td>
-                        <td>{product.category}</td>
-                        <td>${(product.price || 0).toFixed(2)}</td>
-                        <td>
-                          <input 
-                            type="number" 
-                            value={product.stock || 0}
-                            onChange={(e) => handleUpdateStock(product._id, e.target.value)}
-                            onBlur={(e) => {
-                              // Only update if the value has changed
-                              if (product.stock !== parseInt(e.target.value)) {
-                                handleUpdateStock(product._id, e.target.value);
-                              }
-                            }}
-                            min="0"
-                            className={product.stock < 5 ? "low-stock" : ""}
-                          />
-                        </td>
-                        <td>
-                          <span 
-                            className={`status-badge ${product.isVerified ? 'verified' : 'not-verified'}`}
-                            onClick={() => handleToggleVerification(product._id, product.isVerified)}
-                            style={{ cursor: 'pointer' }}
-                          >
-                            {product.isVerified ? 'Verified' : 'Not Verified'}
-                          </span>
-                        </td>
-                        <td>
-                          <button 
-                            className="action-btn edit"
-                            onClick={() => openEditProductModal(product)}
-                          >
-                            Edit
-                          </button>
-                          <button 
-                            className="action-btn delete"
-                            onClick={() => handleRemoveProduct(product._id)}
-                          >
-                            Delete
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                    {products.length === 0 && !loading && (
+                  <div className="stat-card">
+                    <h3>Revenue</h3>
+                    <p className="stat-value">${stats.totalSales.toFixed(2)}</p>
+                    <p className="stat-detail">Orders: {transactions.length}</p>
+                  </div>
+                  <div className="stat-card">
+                    <h3>Orders</h3>
+                    <p className="stat-value">{transactions.length}</p>
+                    <p className="stat-detail">Pending: {stats.pendingOrders}</p>
+                  </div>
+                  <div className="stat-card">
+                    <h3>Bills</h3>
+                    <p className="stat-value">{stats.totalBills}</p>
+                    <p className="stat-detail">Billing System</p>
+                  </div>
+                </div>
+                
+                <h2>Recent Transactions</h2>
+                <div className="filter-controls">
+                  <select 
+                    value={dateFilter} 
+                    onChange={(e) => setDateFilter(e.target.value)}
+                    className="date-filter"
+                  >
+                    <option value="all">All Time</option>
+                    <option value="today">Today</option>
+                    <option value="week">Last Week</option>
+                    <option value="month">Last Month</option>
+                  </select>
+                </div>
+                
+                <div className="recent-transactions">
+                  <table className="transaction-table">
+                    <thead>
                       <tr>
-                        <td colSpan="6" className="no-data">No products found in database</td>
+                        <th>Date</th>
+                        <th>Order ID</th>
+                        <th>Customer</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                        <th>Actions</th>
                       </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            )}
-            
-            {/* Product Modal */}
-            {productModalOpen && (
-              <div className="modal-overlay">
-                <div className="product-modal">
-                  <div className="modal-header">
-                    <h3>{editingProduct ? 'Edit Product' : 'Add New Product'}</h3>
-                    <button className="close-btn" onClick={closeProductModal}>×</button>
-                  </div>
-                  
-                  {productFormError && (
-                    <div className="error-message">
-                      {productFormError}
-                      <button className="close-message" onClick={() => setProductFormError(null)}>×</button>
-                    </div>
-                  )}
-                  
-                  <form onSubmit={editingProduct ? handleEditProduct : handleAddProduct}>
-                    <div className="form-group">
-                      <label htmlFor="name">Product Name *</label>
-                      <input
-                        type="text"
-                        id="name"
-                        name="name"
-                        value={productForm.name}
-                        onChange={handleProductFormChange}
-                        required
-                      />
-                    </div>
-                    
-                    <div className="form-group">
-                      <label htmlFor="description">Description</label>
-                      <textarea
-                        id="description"
-                        name="description"
-                        value={productForm.description}
-                        onChange={handleProductFormChange}
-                        rows="3"
-                      />
-                    </div>
-                    
-                    <div className="form-row">
-                      <div className="form-group">
-                        <label htmlFor="price">Price ($) *</label>
-                        <input
-                          type="number"
-                          id="price"
-                          name="price"
-                          value={productForm.price}
-                          onChange={handleProductFormChange}
-                          min="0.01"
-                          step="0.01"
-                          required
-                        />
-                      </div>
-                      
-                      <div className="form-group">
-                        <label htmlFor="stock">Stock *</label>
-                        <input
-                          type="number"
-                          id="stock"
-                          name="stock"
-                          value={productForm.stock}
-                          onChange={handleProductFormChange}
-                          min="0"
-                          required
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="form-group">
-                      <label htmlFor="category">Category *</label>
-                      <input
-                        type="text"
-                        id="category"
-                        name="category"
-                        value={productForm.category}
-                        onChange={handleProductFormChange}
-                        required
-                      />
-                    </div>
-                    
-                    <div className="form-group">
-                      <label htmlFor="imageUrl">Image URL</label>
-                      <input
-                        type="text"
-                        id="imageUrl"
-                        name="imageUrl"
-                        value={productForm.imageUrl}
-                        onChange={handleProductFormChange}
-                        placeholder="https://example.com/image.jpg"
-                      />
-                    </div>
-                    
-                    <div className="form-group checkbox">
-                      <label>
-                        <input
-                          type="checkbox"
-                          name="isVerified"
-                          checked={productForm.isVerified}
-                          onChange={handleProductFormChange}
-                        />
-                        Verified Product
-                      </label>
-                    </div>
-                    
-                    <div className="form-actions">
-                      <button type="button" className="cancel-btn" onClick={closeProductModal}>
-                        Cancel
-                      </button>
-                      <button 
-                        type="submit" 
-                        className="submit-btn"
-                        disabled={productActionInProgress}
-                      >
-                        {productActionInProgress 
-                          ? `${editingProduct ? 'Updating' : 'Adding'}...` 
-                          : editingProduct ? 'Update Product' : 'Add Product'
-                        }
-                      </button>
-                    </div>
-                  </form>
+                    </thead>
+                    <tbody>
+                      {transactions.slice(0, 5).map(transaction => (
+                        <tr key={transaction._id}>
+                          <td>{new Date(transaction.createdAt).toLocaleDateString()}</td>
+                          <td>{transaction._id.substring(0, 8)}...</td>
+                          <td>{transaction.user?.name || 'Unknown'}</td>
+                          <td>${transaction.totalAmount?.toFixed(2) || '0.00'}</td>
+                          <td>
+                            <span className={`status-badge status-${transaction.status}`}>
+                              {transaction.status}
+                            </span>
+                          </td>
+                          <td>
+                            <button 
+                              className="action-button view-button"
+                              onClick={() => handleViewTransaction(transaction._id)}
+                            >
+                              View
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             )}
-          </div>
-        )}
-
-        {activeTab === 'billing' && (
-          <div className="admin-section billing-section">
-            <div className="section-header">
-              <h2>Billing & Invoices</h2>
-              <div className="filters">
-                <select 
-                  value={dateFilter} 
-                  onChange={(e) => setDateFilter(e.target.value)}
-                  className="date-filter"
-                >
-                  <option value="all">All Time</option>
-                  <option value="today">Today</option>
-                  <option value="week">This Week</option>
-                  <option value="month">This Month</option>
-                </select>
-                <button className="export-btn" onClick={handleExportData}>
-                  Export Data
-                </button>
-              </div>
-            </div>
             
-            {loading ? (
-              <div className="loading">Loading billing data...</div>
-            ) : error ? (
-              <div className="error-message">{error}</div>
-            ) : bills.length === 0 ? (
-              <div className="no-data">No bills found for the selected period.</div>
-            ) : (
-              <div className="bills-table-container">
-                <table className="billing-table">
-                  <thead>
-                    <tr>
-                      <th>Invoice #</th>
-                      <th>Date</th>
-                      <th>Customer</th>
-                      <th>Items</th>
-                      <th>Subtotal</th>
-                      <th>Tax</th>
-                      <th>Total</th>
-                      <th>Status</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {bills.map(bill => (
-                      <tr key={bill._id}>
-                        <td>{bill.invoiceNumber || `INV-${bill._id.substr(-6)}`}</td>
-                        <td>{new Date(bill.date || bill.createdAt).toLocaleDateString()}</td>
-                        <td>{bill.userId || 'Anonymous'}</td>
-                        <td>{bill.items?.length || 0} items</td>
-                        <td>${bill.subtotal?.toFixed(2) || '0.00'}</td>
-                        <td>${bill.tax?.toFixed(2) || '0.00'}</td>
-                        <td className="amount-cell">${bill.total?.toFixed(2) || '0.00'}</td>
-                        <td>
-                          <span className={`status-badge status-${bill.status?.toLowerCase() || 'pending'}`}>
-                            {bill.status || 'Pending'}
-                          </span>
-                        </td>
-                        <td>
-                          <button 
-                            className="action-btn view-btn"
-                            onClick={() => handleViewBill(bill)}
-                          >
-                            View Details
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            {activeTab === 'distribution' && (
+              <div className="distribution-container">
+                <h2>Product Distribution</h2>
+                <p>Distribute unassigned products to sellers in the system. This operation will randomly assign products to sellers.</p>
+                
+                <AdminActions />
+                
+                <h3>Product Distribution Stats</h3>
+                <div className="distribution-stats">
+                  <div className="stat-panel">
+                    <h4>Total Products</h4>
+                    <p>{stats.totalProducts}</p>
+                  </div>
+                  <div className="stat-panel">
+                    <h4>Assigned Products</h4>
+                    <p>{products.filter(p => p.seller).length}</p>
+                  </div>
+                  <div className="stat-panel">
+                    <h4>Unassigned Products</h4>
+                    <p>{products.filter(p => !p.seller).length}</p>
+                  </div>
+                </div>
               </div>
             )}
             
-            {selectedBill && (
-              <div className="modal-overlay">
-                <div className="bill-details-modal">
-                  <div className="modal-header">
-                    <h3>Invoice #{selectedBill.invoiceNumber || `INV-${selectedBill._id.substr(-6)}`}</h3>
-                    <button className="close-btn" onClick={handleCloseBillDetails}>×</button>
-                  </div>
-                  <div className="bill-details">
-                    <div className="bill-summary">
-                      <div className="bill-info">
-                        <p><strong>Date:</strong> {new Date(selectedBill.date || selectedBill.createdAt).toLocaleDateString()}</p>
-                        <p><strong>Order ID:</strong> {selectedBill.orderId}</p>
-                        <p><strong>Status:</strong> {selectedBill.status}</p>
+            {activeTab === 'billing' && (
+              <div className="billing-container">
+                <h2>Billing System</h2>
+                
+                <div className="filter-controls">
+                  <select 
+                    value={dateFilter} 
+                    onChange={(e) => setDateFilter(e.target.value)}
+                    className="date-filter"
+                  >
+                    <option value="all">All Time</option>
+                    <option value="today">Today</option>
+                    <option value="week">Last Week</option>
+                    <option value="month">Last Month</option>
+                  </select>
+                  <button 
+                    className="export-button"
+                    onClick={handleExportData}
+                  >
+                    Export CSV
+                  </button>
+                </div>
+                
+                {selectedTransaction ? (
+                  <div className="transaction-details">
+                    <button 
+                      className="back-button"
+                      onClick={() => setSelectedTransaction(null)}
+                    >
+                      Back to List
+                    </button>
+                    
+                    <h3>Transaction Details</h3>
+                    
+                    <div className="detail-panel">
+                      <div className="detail-section">
+                        <h4>Order Information</h4>
+                        <p><strong>Order ID:</strong> {selectedTransaction._id}</p>
+                        <p><strong>Date:</strong> {new Date(selectedTransaction.createdAt).toLocaleString()}</p>
+                        <p><strong>Status:</strong> {selectedTransaction.status}</p>
+                        <p><strong>Total Amount:</strong> ${selectedTransaction.totalAmount?.toFixed(2) || '0.00'}</p>
+                        <p><strong>Payment Method:</strong> {selectedTransaction.paymentMethod || 'Standard Payment'}</p>
                       </div>
                       
-                      <div className="bill-customer">
+                      <div className="detail-section">
                         <h4>Customer Information</h4>
-                        <p>User ID: {selectedBill.userId}</p>
-                        {selectedBill.shipping && (
-                          <div>
-                            <p>
-                              {selectedBill.shipping.street}, {selectedBill.shipping.city}<br />
-                              {selectedBill.shipping.state}, {selectedBill.shipping.zipCode}<br />
-                              {selectedBill.shipping.country}
-                            </p>
-                          </div>
-                        )}
+                        <p><strong>Name:</strong> {selectedTransaction.user?.name || 'Unknown'}</p>
+                        <p><strong>Email:</strong> {selectedTransaction.user?.email || 'Unknown'}</p>
                       </div>
+                      
+                      {selectedTransaction.shippingAddress && (
+                        <div className="detail-section">
+                          <h4>Shipping Address</h4>
+                          <p>{selectedTransaction.shippingAddress.street}</p>
+                          <p>{selectedTransaction.shippingAddress.city}, {selectedTransaction.shippingAddress.state} {selectedTransaction.shippingAddress.zipCode}</p>
+                          <p>{selectedTransaction.shippingAddress.country}</p>
+                        </div>
+                      )}
                     </div>
                     
-                    <div className="bill-items">
+                    <div className="detail-panel">
                       <h4>Items</h4>
                       <table className="items-table">
                         <thead>
@@ -1111,10 +908,10 @@ function AdminDashboard() {
                           </tr>
                         </thead>
                         <tbody>
-                          {selectedBill.items?.map((item, index) => (
+                          {selectedTransaction.items?.map((item, index) => (
                             <tr key={index}>
-                              <td>{item.name}</td>
-                              <td>${item.price?.toFixed(2)}</td>
+                              <td>{item.product?.name || 'Unknown Product'}</td>
+                              <td>${item.price?.toFixed(2) || '0.00'}</td>
                               <td>{item.quantity}</td>
                               <td>${(item.price * item.quantity).toFixed(2)}</td>
                             </tr>
@@ -1123,33 +920,296 @@ function AdminDashboard() {
                       </table>
                     </div>
                     
-                    <div className="bill-totals">
-                      <div className="total-line">
-                        <span>Subtotal:</span>
-                        <span>${selectedBill.subtotal?.toFixed(2)}</span>
+                    <div className="action-panel">
+                      <h4>Actions</h4>
+                      <div className="status-controls">
+                        <select 
+                          defaultValue={selectedTransaction.status}
+                          onChange={(e) => handleUpdateStatus(selectedTransaction._id, e.target.value)}
+                        >
+                          <option value="pending">Pending</option>
+                          <option value="processing">Processing</option>
+                          <option value="completed">Completed</option>
+                          <option value="cancelled">Cancelled</option>
+                        </select>
+                        
+                        <button 
+                          className="blockchain-button"
+                          onClick={() => handleRecordBlockchain(selectedTransaction._id)}
+                          disabled={selectedTransaction.blockchainVerified}
+                        >
+                          {selectedTransaction.blockchainVerified 
+                            ? 'Blockchain Verified' 
+                            : 'Record to Blockchain'}
+                        </button>
                       </div>
-                      <div className="total-line">
-                        <span>Tax:</span>
-                        <span>${selectedBill.tax?.toFixed(2)}</span>
-                      </div>
-                      <div className="total-line total-amount">
-                        <span>Total:</span>
-                        <span>${selectedBill.total?.toFixed(2)}</span>
-                      </div>
-                    </div>
-                    
-                    <div className="bill-actions">
-                      <button className="action-btn print-btn" onClick={() => window.print()}>
-                        Print Invoice
-                      </button>
+                      
+                      {selectedTransaction.blockchainTxId && (
+                        <div className="blockchain-info">
+                          <p><strong>Blockchain Transaction:</strong></p>
+                          <p className="blockchain-hash">{selectedTransaction.blockchainTxId}</p>
+                        </div>
+                      )}
                     </div>
                   </div>
+                ) : (
+                  <div className="transactions-list">
+                    <table className="transaction-table">
+                      <thead>
+                        <tr>
+                          <th>Date</th>
+                          <th>Order ID</th>
+                          <th>Customer</th>
+                          <th>Amount</th>
+                          <th>Status</th>
+                          <th>Blockchain</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {transactions.map(transaction => (
+                          <tr key={transaction._id}>
+                            <td>{new Date(transaction.createdAt).toLocaleDateString()}</td>
+                            <td>{transaction._id.substring(0, 8)}...</td>
+                            <td>{transaction.user?.name || 'Unknown'}</td>
+                            <td>${transaction.totalAmount?.toFixed(2) || '0.00'}</td>
+                            <td>
+                              <span className={`status-badge status-${transaction.status}`}>
+                                {transaction.status}
+                              </span>
+                            </td>
+                            <td>
+                              {transaction.blockchainVerified ? (
+                                <span className="blockchain-verified">Verified</span>
+                              ) : (
+                                <span className="blockchain-unverified">Unverified</span>
+                              )}
+                            </td>
+                            <td>
+                              <button 
+                                className="action-button view-button"
+                                onClick={() => handleViewTransaction(transaction._id)}
+                              >
+                                View
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {activeTab === 'products' && (
+              <div className="products-container">
+                <h2>Product Management</h2>
+                
+                <button 
+                  className="add-product-button"
+                  onClick={openAddProductModal}
+                >
+                  Add New Product
+                </button>
+                
+                <div className="products-list">
+                  <table className="products-table">
+                    <thead>
+                      <tr>
+                        <th>Image</th>
+                        <th>Name</th>
+                        <th>Price</th>
+                        <th>Stock</th>
+                        <th>Seller</th>
+                        <th>Verified</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {products.map(product => (
+                        <tr key={product._id || product.id}>
+                          <td>
+                            <img 
+                              src={product.imageUrl || 'https://via.placeholder.com/50'} 
+                              alt={product.name}
+                              className="product-thumbnail"
+                            />
+                          </td>
+                          <td>{product.name}</td>
+                          <td>${parseFloat(product.price).toFixed(2)}</td>
+                          <td>
+                            <input
+                              type="number"
+                              min="0"
+                              value={product.stock || 0}
+                              onChange={(e) => handleUpdateStock(product._id || product.id, e.target.value)}
+                              className="stock-input"
+                            />
+                          </td>
+                          <td>{product.seller || 'Unassigned'}</td>
+                          <td>
+                            <button
+                              className={`verification-button ${product.isVerified ? 'verified' : 'unverified'}`}
+                              onClick={() => handleToggleVerification(product._id || product.id, product.isVerified)}
+                            >
+                              {product.isVerified ? 'Verified' : 'Unverified'}
+                            </button>
+                          </td>
+                          <td>
+                            <button
+                              className="action-button edit-button"
+                              onClick={() => openEditProductModal(product)}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              className="action-button delete-button"
+                              onClick={() => handleRemoveProduct(product._id || product.id)}
+                            >
+                              Delete
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             )}
-          </div>
+          </>
         )}
       </div>
+      
+      {productModalOpen && (
+        <div className="product-modal-overlay">
+          <div className="product-modal">
+            <h2>{editingProduct ? 'Edit Product' : 'Add Product'}</h2>
+            
+            {productFormError && (
+              <div className="form-error-message">{productFormError}</div>
+            )}
+            
+            {productActionSuccess && (
+              <div className="form-success-message">{productActionSuccess}</div>
+            )}
+            
+            <form onSubmit={editingProduct ? handleEditProduct : handleAddProduct}>
+              <div className="form-group">
+                <label>Product Name</label>
+                <input
+                  type="text"
+                  name="name"
+                  value={productForm.name}
+                  onChange={handleProductFormChange}
+                  required
+                />
+              </div>
+              
+              <div className="form-group">
+                <label>Description</label>
+                <textarea
+                  name="description"
+                  value={productForm.description}
+                  onChange={handleProductFormChange}
+                  required
+                />
+              </div>
+              
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Price ($)</label>
+                  <input
+                    type="number"
+                    name="price"
+                    min="0.01"
+                    step="0.01"
+                    value={productForm.price}
+                    onChange={handleProductFormChange}
+                    required
+                  />
+                </div>
+                
+                <div className="form-group">
+                  <label>Stock</label>
+                  <input
+                    type="number"
+                    name="stock"
+                    min="0"
+                    value={productForm.stock}
+                    onChange={handleProductFormChange}
+                    required
+                  />
+                </div>
+              </div>
+              
+              <div className="form-group">
+                <label>Category</label>
+                <select
+                  name="category"
+                  value={productForm.category}
+                  onChange={handleProductFormChange}
+                  required
+                >
+                  <option value="">Select Category</option>
+                  <option value="electronics">Electronics</option>
+                  <option value="clothing">Clothing</option>
+                  <option value="home">Home & Kitchen</option>
+                  <option value="books">Books</option>
+                  <option value="toys">Toys & Games</option>
+                </select>
+              </div>
+              
+              <div className="form-group">
+                <label>Image URL</label>
+                <input
+                  type="url"
+                  name="imageUrl"
+                  value={productForm.imageUrl}
+                  onChange={handleProductFormChange}
+                  required
+                />
+              </div>
+              
+              <div className="form-group checkbox-group">
+                <label>
+                  <input
+                    type="checkbox"
+                    name="isVerified"
+                    checked={productForm.isVerified}
+                    onChange={(e) => setProductForm(prev => ({
+                      ...prev,
+                      isVerified: e.target.checked
+                    }))}
+                  />
+                  Mark as Verified
+                </label>
+              </div>
+              
+              <div className="form-buttons">
+                <button
+                  type="button"
+                  onClick={closeProductModal}
+                  className="cancel-button"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={productActionInProgress}
+                  className="submit-button"
+                >
+                  {productActionInProgress 
+                    ? 'Processing...' 
+                    : editingProduct 
+                      ? 'Update Product' 
+                      : 'Add Product'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -34,6 +34,26 @@ const ProtectedRoute = ({ children }) => {
   return children;
 };
 
+// Admin route protection
+const AdminRoute = ({ children }) => {
+  const { authenticated, guestMode, user } = useAuth();
+  
+  // Check if user is admin
+  const isAdmin = user?.isAdmin || user?.role === 'admin';
+  
+  // Redirect to sign in if not authenticated or in guest mode
+  if (!authenticated || guestMode) {
+    return <Navigate to={`/signin?returnTo=${encodeURIComponent(window.location.pathname)}`} />;
+  }
+  
+  // Redirect to home if authenticated but not admin
+  if (!isAdmin) {
+    return <Navigate to="/" />;
+  }
+  
+  return children;
+};
+
 const theme = createTheme({
   palette: {
     primary: {
@@ -82,7 +102,11 @@ const App = () => {
                       <Admin />
                     </ProtectedRoute>
                   } />
-                  <Route path="/admin-dashboard" element={<AdminDashboard />} />
+                  <Route path="/admin-dashboard" element={
+                    <AdminRoute>
+                      <AdminDashboard />
+                    </AdminRoute>
+                  } />
                   <Route path="/cart" element={<Cart />} />
                   <Route path="/order-confirmation" element={<OrderConfirmation />} />
                   <Route path="/thank-you" element={<ThankYouPage />} />
