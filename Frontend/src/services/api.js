@@ -187,4 +187,28 @@ export const delete_ = async (url, config = {}) => {
     console.error('DELETE request failed:', error);
     throw error;
   }
+};
+
+// Create a product
+export const createProduct = async (productData) => {
+  return handleApiRequestWithMockFallback(
+    // Real API call
+    (baseUrl) => axios.post(`${baseUrl}/api/products`, productData),
+    // Mock fallback
+    () => {
+      // Create a mock product with the provided data
+      const mockProduct = {
+        ...productData,
+        _id: 'mock_' + Date.now(),
+        createdAt: new Date().toISOString()
+      };
+      
+      // Return mock response
+      return { 
+        data: mockProduct,
+        status: 200,
+        statusText: 'OK (Mock)'
+      };
+    }
+  );
 }; 
