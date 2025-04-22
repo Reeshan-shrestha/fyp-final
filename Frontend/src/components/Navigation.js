@@ -39,17 +39,19 @@ const Navigation = () => {
   };
 
   const navLinks = [
-    { path: '/', label: 'Home', icon: <HomeIcon /> },
-    { path: '/products', label: 'Products', icon: <CategoryIcon /> },
+    { path: '/', label: 'Home', icon: <HomeIcon fontSize="small" /> },
+    { path: '/products', label: 'Products', icon: <CategoryIcon fontSize="small" /> },
     { 
       path: '/cart', 
       label: 'Cart', 
-      icon: <ShoppingCartIcon />,
+      icon: <ShoppingCartIcon fontSize="small" />,
       badge: cart.length
     },
-    ...((user?.role === 'seller' || user?.role === 'admin') ? [{ path: '/sell', label: 'Sell', icon: <StorefrontIcon /> }] : []),
+    ...((user?.role === 'seller' || user?.role === 'admin') ? [
+      { path: '/sell', label: 'Sell', icon: <StorefrontIcon fontSize="small" /> }
+    ] : []),
     ...(user?.role === 'admin' ? [
-      { path: '/admin-dashboard', label: 'Admin Dashboard', icon: <DashboardIcon /> }
+      { path: '/admin-dashboard', label: 'Admin Dashboard', icon: <DashboardIcon fontSize="small" /> }
     ] : [])
   ];
 
@@ -68,7 +70,6 @@ const Navigation = () => {
               to={path}
               className={`nav-link ${location.pathname === path ? 'active' : ''} ${path === '/cart' ? 'cart-link' : ''}`}
             >
-              <span className="nav-icon">{icon}</span>
               {path === '/cart' ? (
                 <Badge 
                   badgeContent={badge} 
@@ -85,10 +86,16 @@ const Navigation = () => {
                     } 
                   }}
                 >
-                  {label}
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    {icon}
+                    <span>{label}</span>
+                  </Box>
                 </Badge>
               ) : (
-                label
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  {icon}
+                  <span>{label}</span>
+                </Box>
               )}
             </Link>
           ))}
@@ -134,7 +141,6 @@ const Navigation = () => {
               className={`mobile-nav-link ${location.pathname === path ? 'active' : ''} ${path === '/cart' ? 'cart-link' : ''}`}
               onClick={() => setIsMobileMenuOpen(false)}
             >
-              <span className="mobile-nav-icon">{icon}</span>
               {path === '/cart' ? (
                 <Badge 
                   badgeContent={badge} 
@@ -151,10 +157,16 @@ const Navigation = () => {
                     } 
                   }}
                 >
-                  {label}
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    {icon}
+                    <span>{label}</span>
+                  </Box>
                 </Badge>
               ) : (
-                label
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  {icon}
+                  <span>{label}</span>
+                </Box>
               )}
             </Link>
           ))}

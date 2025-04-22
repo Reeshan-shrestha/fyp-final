@@ -116,9 +116,8 @@
   transform: translateY(-1px);
 }
 
-.nav-link:hover svg,
-.nav-link:hover .MuiTypography-root {
-  color: var(--primary) !important;
+.nav-link:hover svg {
+  color: var(--primary);
 }
 
 .nav-link.active {
@@ -127,30 +126,14 @@
   font-weight: 600;
 }
 
-.nav-link.active svg,
-.nav-link.active .MuiTypography-root {
-  color: var(--primary) !important;
+.nav-link.active svg {
+  color: var(--primary);
 }
 
-/* Icons for nav links */
-.nav-link[href="/"]::before {
-  content: "🏠";
-}
-
-.nav-link[href="/products"]::before {
-  content: "🛒";
-}
-
-.nav-link[href="/cart"]::before {
-  content: "🛍️";
-}
-
-.nav-link[href="/add-product"]::before {
-  content: "📦";
-}
-
-.nav-link[href="/admin"]::before {
-  content: "⚙️";
+/* Remove emoji icons as we're using Material UI icons now */
+.nav-link svg {
+  color: var(--text-light);
+  transition: var(--transition-normal);
 }
 
 .cart-link {
@@ -168,9 +151,8 @@
   transform: translateY(-1px);
 }
 
-.cart-link:hover svg,
-.cart-link:hover .MuiTypography-root {
-  color: var(--primary) !important;
+.cart-link:hover svg {
+  color: var(--primary);
 }
 
 .cart-link.active {
@@ -178,9 +160,8 @@
   background: rgba(67, 97, 238, 0.08);
 }
 
-.cart-link.active svg,
-.cart-link.active .MuiTypography-root {
-  color: var(--primary) !important;
+.cart-link.active svg {
+  color: var(--primary);
 }
 
 .auth-buttons {
@@ -331,41 +312,40 @@
 .mobile-nav-link {
   color: var(--text);
   text-decoration: none;
-  font-size: 1.2rem;
   font-weight: 500;
-  padding: var(--spacing-md);
-  border-radius: var(--radius-lg);
-  transition: var(--transition-normal);
+  font-size: 1.1rem;
   display: flex;
   align-items: center;
-  gap: 0.8rem;
+  gap: 10px;
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-radius: var(--radius-md);
+  transition: var(--transition-normal);
+  width: 100%;
 }
 
-.mobile-nav-link::before {
-  font-size: 1.4rem;
+.mobile-nav-link svg {
+  color: var(--text-light);
+  font-size: 20px;
+  transition: var(--transition-normal);
 }
 
-.mobile-nav-link[href="/"]::before {
-  content: "🏠";
-}
-
-.mobile-nav-link[href="/products"]::before {
-  content: "🛒";
-}
-
-.mobile-nav-link[href="/add-product"]::before {
-  content: "📦";
-}
-
+/* Remove old emoji icons */
+.mobile-nav-link[href="/"]::before,
+.mobile-nav-link[href="/products"]::before,
+.mobile-nav-link[href="/add-product"]::before,
 .mobile-nav-link[href="/admin"]::before {
-  content: "⚙️";
+  content: none;
 }
 
 .mobile-nav-link:hover,
 .mobile-nav-link.active {
+  background-color: rgba(67, 97, 238, 0.08);
   color: var(--primary);
-  background: rgba(108, 92, 231, 0.05);
-  transform: translateX(8px);
+}
+
+.mobile-nav-link:hover svg,
+.mobile-nav-link.active svg {
+  color: var(--primary);
 }
 
 .mobile-auth-buttons {
@@ -442,27 +422,26 @@
 
 /* Mobile cart link */
 .mobile-nav-link.cart-link {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: var(--spacing-md);
-  padding: var(--spacing-sm) var(--spacing-md) !important;
+  gap: 10px;
+  padding: var(--spacing-md) var(--spacing-lg);
 }
 
 .mobile-nav-link.cart-link svg {
-  margin-right: var(--spacing-sm);
+  color: var(--text-light);
 }
 
 .mobile-nav-link.cart-link:hover,
 .mobile-nav-link.cart-link.active {
+  background-color: rgba(67, 97, 238, 0.08);
   color: var(--primary);
-  background: rgba(67, 97, 238, 0.08);
 }
 
 .mobile-nav-link.cart-link:hover svg,
-.mobile-nav-link.cart-link:hover .MuiTypography-root,
-.mobile-nav-link.cart-link.active svg,
-.mobile-nav-link.cart-link.active .MuiTypography-root {
-  color: var(--primary) !important;
+.mobile-nav-link.cart-link.active svg {
+  color: var(--primary);
 }
 
 /* Responsive Design */
