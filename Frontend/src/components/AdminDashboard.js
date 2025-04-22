@@ -65,13 +65,20 @@ function AdminDashboard() {
         
         console.log('Products fetched:', productsData);
         
-        setProducts(productsData);
+        // Map database fields to frontend fields
+        const mappedProducts = productsData.map(product => ({
+          ...product,
+          stock: product.countInStock,
+          isVerified: product.verified
+        }));
         
-        // Calculate stats
-        const lowStock = productsData.filter(p => p.stock && p.stock < 5).length;
+        setProducts(mappedProducts);
+        
+        // Calculate stats using the mapped field names
+        const lowStock = mappedProducts.filter(p => p.stock && p.stock < 5).length;
         setStats(prev => ({
           ...prev,
-          totalProducts: productsData.length,
+          totalProducts: mappedProducts.length,
           lowStockItems: lowStock
         }));
       } catch (err) {
@@ -287,8 +294,8 @@ function AdminDashboard() {
       price: product.price || '',
       category: product.category || '',
       imageUrl: product.imageUrl || '',
-      stock: product.stock || '',
-      isVerified: product.isVerified || false
+      stock: product.stock || product.countInStock || '', // Accept either field name
+      isVerified: product.isVerified || product.verified || false // Accept either field name
     });
     setProductFormError(null);
     setProductModalOpen(true);
@@ -342,7 +349,9 @@ function AdminDashboard() {
       const productData = {
         ...productForm,
         price: parseFloat(productForm.price),
-        stock: parseInt(productForm.stock)
+        // Map frontend fields to database fields
+        countInStock: parseInt(productForm.stock),
+        verified: productForm.isVerified
       };
       
       console.log('Adding new product:', productData);
@@ -408,7 +417,9 @@ function AdminDashboard() {
       const productData = {
         ...productForm,
         price: parseFloat(productForm.price),
-        stock: parseInt(productForm.stock)
+        // Map frontend fields to database fields
+        countInStock: parseInt(productForm.stock),
+        verified: productForm.isVerified
       };
       
       console.log(`Updating product ${editingProduct._id}:`, productData);
@@ -546,7 +557,7 @@ function AdminDashboard() {
           
           await apiService.patch(
             `${config.API_BASE_URL}/api/products/${productId}`,
-            { stock: stockValue },
+            { countInStock: stockValue }, // Map to database field name
             { headers: { Authorization: `Bearer ${token}` } }
           );
         } else {
@@ -626,7 +637,7 @@ function AdminDashboard() {
           
           await apiService.patch(
             `${config.API_BASE_URL}/api/products/${productId}`,
-            { isVerified: newStatus },
+            { verified: newStatus }, // Map to database field name
             { headers: { Authorization: `Bearer ${token}` } }
           );
         } else {
