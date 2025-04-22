@@ -742,7 +742,7 @@ function AdminDashboard() {
                   </div>
                   <div className="stat-card">
                     <h3>Revenue</h3>
-                    <p className="stat-value">${stats.totalSales.toFixed(2)}</p>
+                    <p className="stat-value">${(stats.totalSales || 0).toFixed(2)}</p>
                     <p className="stat-detail">Orders: {transactions.length}</p>
                   </div>
                   <div className="stat-card">
@@ -903,27 +903,27 @@ function AdminDashboard() {
                             </tr>
                           </thead>
                           <tbody>
-                            {selectedBill.items.map((item, idx) => (
+                            {selectedBill.items && selectedBill.items.map((item, idx) => (
                               <tr key={idx}>
                                 <td>{item.name}</td>
                                 <td>{item.quantity}</td>
-                                <td>${item.price.toFixed(2)}</td>
-                                <td>${item.subtotal.toFixed(2)}</td>
+                                <td>${item.price ? item.price.toFixed(2) : '0.00'}</td>
+                                <td>${item.subtotal ? item.subtotal.toFixed(2) : '0.00'}</td>
                               </tr>
                             ))}
                           </tbody>
                           <tfoot>
                             <tr>
                               <td colSpan="3" style={{textAlign: 'right'}}><strong>Subtotal:</strong></td>
-                              <td>${selectedBill.totalAmount.toFixed(2)}</td>
+                              <td>${selectedBill.totalAmount ? selectedBill.totalAmount.toFixed(2) : '0.00'}</td>
                             </tr>
                             <tr>
                               <td colSpan="3" style={{textAlign: 'right'}}><strong>Tax:</strong></td>
-                              <td>${selectedBill.tax.toFixed(2)}</td>
+                              <td>${selectedBill.tax ? selectedBill.tax.toFixed(2) : '0.00'}</td>
                             </tr>
                             <tr>
                               <td colSpan="3" style={{textAlign: 'right'}}><strong>Total:</strong></td>
-                              <td>${(selectedBill.finalAmount || selectedBill.total).toFixed(2)}</td>
+                              <td>${((selectedBill.finalAmount || selectedBill.total) || 0).toFixed(2)}</td>
                             </tr>
                           </tfoot>
                         </table>
@@ -983,21 +983,21 @@ function AdminDashboard() {
                                     </tr>
                                   </thead>
                                   <tbody>
-                                    ${selectedBill.items.map(item => `
+                                    ${selectedBill.items ? selectedBill.items.map(item => `
                                       <tr>
                                         <td>${item.name}</td>
                                         <td>${item.quantity}</td>
-                                        <td>$${item.price.toFixed(2)}</td>
-                                        <td>$${item.subtotal.toFixed(2)}</td>
+                                        <td>$${item.price ? item.price.toFixed(2) : '0.00'}</td>
+                                        <td>$${item.subtotal ? item.subtotal.toFixed(2) : '0.00'}</td>
                                       </tr>
-                                    `).join('')}
+                                    `).join('') : ''}
                                   </tbody>
                                 </table>
                                 
                                 <div class="bill-total">
-                                  <div><strong>Subtotal:</strong> $${selectedBill.totalAmount.toFixed(2)}</div>
-                                  <div><strong>Tax:</strong> $${selectedBill.tax.toFixed(2)}</div>
-                                  <div><strong>Total:</strong> $${(selectedBill.finalAmount || selectedBill.total).toFixed(2)}</div>
+                                  <div><strong>Subtotal:</strong> $${selectedBill.totalAmount ? selectedBill.totalAmount.toFixed(2) : '0.00'}</div>
+                                  <div><strong>Tax:</strong> $${selectedBill.tax ? selectedBill.tax.toFixed(2) : '0.00'}</div>
+                                  <div><strong>Total:</strong> $${((selectedBill.finalAmount || selectedBill.total) || 0).toFixed(2)}</div>
                                 </div>
                                 
                                 <div class="bill-footer">
@@ -1039,7 +1039,7 @@ function AdminDashboard() {
                               <td>{bill.billNumber || bill.invoiceNumber}</td>
                               <td>{new Date(bill.billDate || bill.createdAt).toLocaleDateString()}</td>
                               <td>{bill.userId}</td>
-                              <td>${(bill.finalAmount || bill.total).toFixed(2)}</td>
+                              <td>${((bill.finalAmount || bill.total) || 0).toFixed(2)}</td>
                               <td>
                                 <span className={`status-badge ${bill.paymentStatus}`}>
                                   {bill.paymentStatus}
@@ -1102,7 +1102,7 @@ function AdminDashboard() {
                             />
                           </td>
                           <td>{product.name}</td>
-                          <td>${parseFloat(product.price).toFixed(2)}</td>
+                          <td>${parseFloat(product.price || 0).toFixed(2)}</td>
                           <td>
                             <input
                               type="number"
