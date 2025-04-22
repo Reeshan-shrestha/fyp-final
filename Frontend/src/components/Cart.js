@@ -150,12 +150,18 @@ const Cart = () => {
       const billData = {
         orderId: orderResponse.data._id,
         userId: user?._id,
-        items: orderData.items,
-        subtotal: orderData.subtotal,
-        tax: orderData.tax,
-        total: orderData.totalAmount,
+        items: cart.map(item => ({
+          productId: item._id,
+          name: item.name,
+          quantity: item.quantity,
+          price: item.price,
+          subtotal: (item.price * item.quantity)
+        })),
+        subtotal: parseFloat(formattedSubtotal),
+        tax: parseFloat(formattedTax),
+        total: parseFloat(formattedTotal),
         date: orderData.date,
-        status: 'paid',
+        status: 'completed',
         shipping: orderData.shippingAddress
       };
       

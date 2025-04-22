@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -101,6 +101,7 @@ const ThankYouPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { order, bill, orderDate } = location.state || {};
+  const [isPrintView, setIsPrintView] = useState(false);
 
   // Calculate estimated delivery date (7 days from now)
   const deliveryDate = new Date();
@@ -111,6 +112,15 @@ const ThankYouPage = () => {
     day: 'numeric',
     year: 'numeric'
   });
+
+  const handleViewBill = () => {
+    setIsPrintView(true);
+    // Set a small timeout to ensure the view is updated before printing
+    setTimeout(() => {
+      window.print();
+      setIsPrintView(false);
+    }, 300);
+  };
 
   // If no order data, show fallback content
   if (!order) {
@@ -141,20 +151,31 @@ const ThankYouPage = () => {
     );
   }
 
+  // Add CSS class for print mode
+  const containerClass = isPrintView ? "container print-mode" : "container";
+
   return (
-    <Container maxWidth="md">
+    <Container maxWidth="md" className={containerClass}>
       <StyledPaper>
-        <Box textAlign="center">
-          <SuccessIcon>
+        {isPrintView && (
+          <div className="print-header">
+            <h1>ChainBazzar</h1>
+            <p>Order Receipt</p>
+            <p>Date: {new Date().toLocaleDateString()}</p>
+          </div>
+        )}
+        
+        <Box textAlign="center" className={isPrintView ? "print-visible" : ""}>
+          <SuccessIcon className={isPrintView ? "print-hidden" : ""}>
             <CheckCircleIcon />
           </SuccessIcon>
           <Typography variant="h4" gutterBottom fontWeight="bold">
-            Thank You for Your Purchase!
+            {isPrintView ? 'Order Receipt' : 'Thank You for Your Purchase!'}
           </Typography>
-          <Typography variant="subtitle1" color="text.secondary" paragraph>
+          <Typography variant="subtitle1" color="text.secondary" paragraph className={isPrintView ? "print-hidden" : ""}>
             Your order has been confirmed and will be shipped soon.
           </Typography>
-          <Box display="flex" justifyContent="center" my={2}>
+          <Box display="flex" justifyContent="center" my={2} className={isPrintView ? "print-hidden" : ""}>
             <Chip
               icon={<EmailIcon />}
               label="Confirmation email has been sent to your registered email address"
@@ -369,7 +390,7 @@ const ThankYouPage = () => {
           </Grid>
         </Grid>
 
-        <Box textAlign="center" mt={4}>
+        <Box textAlign="center" mt={4} className={isPrintView ? "print-hidden" : ""}>
           <Button
             variant="contained"
             startIcon={<ArrowBackIcon />}
@@ -378,7 +399,24 @@ const ThankYouPage = () => {
           >
             Continue Shopping
           </Button>
+          <Button
+            variant="outlined"
+            startIcon={<ReceiptIcon />}
+            onClick={handleViewBill}
+            color="secondary"
+          >
+            View Bill
+          </Button>
         </Box>
+        
+        {isPrintView && (
+          <div className="print-footer">
+            <p>Thank you for shopping with ChainBazzar!</p>
+            <p>For any questions about your order, please contact support@chainbazzar.com</p>
+            <p>Order ID: {order._id || bill?.orderId}</p>
+            <p>Bill Number: {bill?.billNumber || bill?.invoiceNumber}</p>
+          </div>
+        )}
       </StyledPaper>
     </Container>
   );

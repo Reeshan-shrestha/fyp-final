@@ -4,6 +4,7 @@ const Transaction = require('../models/Transaction');
 const Order = require('../models/Order');
 const User = require('../models/User');
 const Product = require('../models/Product');
+const Bill = require('../models/Bill');
 
 // Get all transactions with filtering
 router.get('/', async (req, res) => {
@@ -257,6 +258,88 @@ router.post('/purchase', async (req, res) => {
   } catch (error) {
     console.error('Error creating order:', error);
     res.status(500).json({ message: 'Error creating order', error: error.message });
+  }
+});
+
+// Get all bills
+router.get('/bills', async (req, res) => {
+  try {
+    const bills = await Bill.find({})
+      .sort({ billDate: -1 })
+      .lean();
+    
+    res.json({ data: bills });
+  } catch (error) {
+    console.error('Error fetching bills:', error);
+    res.status(500).json({ message: 'Error fetching bills', error: error.message });
+  }
+});
+
+// Get bill by ID
+router.get('/bills/:id', async (req, res) => {
+  try {
+    const bill = await Bill.findById(req.params.id).lean();
+    
+    if (!bill) {
+      return res.status(404).json({ message: 'Bill not found' });
+    }
+    
+    res.json({ data: bill });
+  } catch (error) {
+    console.error('Error fetching bill:', error);
+    res.status(500).json({ message: 'Error fetching bill', error: error.message });
+  }
+});
+
+// Create a new bill
+router.post('/bills', async (req, res) => {
+  try {
+    const { orderId, userId, items, subtotal, tax, total, status, date } = req.body;
+    
+    if (!orderId || !userId || !items || !subtotal || !tax || !total) {
+      return res.status(400).json({ 
+        message: 'Missing required fields',
+        required: ['orderId', 'userId', 'items', 'subtotal', 'tax', 'total']
+      });
+    }
+    
+    // Generate bill number
+    const prefix = 'BILL';
+    const timestamp = Date.now().toString().slice(-6);
+    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    const billNumber = `${prefix}-${timestamp}-${random}`;
+    
+    // Format items correctly for the Bill model
+    const billItems = items.map(item => ({
+      itemId: item.productId || item._id,
+      name: item.name,
+      quantity: item.quantity,
+      price: item.price,
+      subtotal: item.subtotal || (item.price * item.quantity)
+    }));
+    
+    // Create new bill
+    const newBill = new Bill({
+      orderId,
+      userId,
+      items: billItems,
+      totalAmount: subtotal,
+      tax,
+      finalAmount: total,
+      billNumber,
+      billDate: date ? new Date(date) : new Date(),
+      paymentStatus: status || 'completed'
+    });
+    
+    await newBill.save();
+    
+    res.status(201).json({
+      message: 'Bill created successfully',
+      data: newBill
+    });
+  } catch (error) {
+    console.error('Error creating bill:', error);
+    res.status(500).json({ message: 'Error creating bill', error: error.message });
   }
 });
 

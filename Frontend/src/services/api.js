@@ -134,7 +134,7 @@ export const createBill = async (billData) => {
 export const getAllBills = async () => {
   return handleApiRequestWithMockFallback(
     // Real API call
-    (baseUrl) => axios.get(`${baseUrl}/api/bills`),
+    (baseUrl) => axios.get(`${baseUrl}/api/billing/bills`),
     // Mock fallback
     () => mockApi.getAllBills()
   );

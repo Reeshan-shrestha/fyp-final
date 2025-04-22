@@ -215,7 +215,7 @@ const Product = ({ item, provider, account, chainBazzar: contract, togglePop }) 
             </div>
             <div className="spec-item">
               <span className="spec-label">Seller</span>
-              <span className="spec-value">{item.seller || 'ChainBazzar'}</span>
+              <span className="spec-value">{item.sellerName || item.seller || 'ChainBazzar'}</span>
             </div>
             {item.condition && (
               <div className="spec-item">

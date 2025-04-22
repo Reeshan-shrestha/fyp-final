@@ -136,7 +136,7 @@ const ProductList = () => {
                 
                 <div className="product-meta">
                   <span className="product-category">{product.category}</span>
-                  <span className="product-seller">by {product.seller}</span>
+                  <span className="product-seller">by {product.sellerName || product.seller || 'ChainBazzar'}</span>
                 </div>
                 
                 <div className="product-price">

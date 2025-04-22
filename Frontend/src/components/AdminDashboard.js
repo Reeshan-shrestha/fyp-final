@@ -858,146 +858,211 @@ function AdminDashboard() {
                     Export CSV
                   </button>
                 </div>
-                
-                {selectedTransaction ? (
-                  <div className="transaction-details">
+
+                {selectedBill ? (
+                  // Bill detail view
+                  <div className="bill-details">
                     <button 
                       className="back-button"
-                      onClick={() => setSelectedTransaction(null)}
+                      onClick={() => setSelectedBill(null)}
                     >
-                      Back to List
+                      Back to Bills List
                     </button>
-                    
-                    <h3>Transaction Details</h3>
                     
                     <div className="detail-panel">
                       <div className="detail-section">
-                        <h4>Order Information</h4>
-                        <p><strong>Order ID:</strong> {selectedTransaction._id}</p>
-                        <p><strong>Date:</strong> {new Date(selectedTransaction.createdAt).toLocaleString()}</p>
-                        <p><strong>Status:</strong> {selectedTransaction.status}</p>
-                        <p><strong>Total Amount:</strong> ${selectedTransaction.totalAmount?.toFixed(2) || '0.00'}</p>
-                        <p><strong>Payment Method:</strong> {selectedTransaction.paymentMethod || 'Standard Payment'}</p>
+                        <h4>Bill Information</h4>
+                        <div className="bill-info-grid">
+                          <div>
+                            <strong>Bill Number:</strong> {selectedBill.billNumber || selectedBill.invoiceNumber}
+                          </div>
+                          <div>
+                            <strong>Date:</strong> {new Date(selectedBill.billDate || selectedBill.createdAt).toLocaleDateString()}
+                          </div>
+                          <div>
+                            <strong>Payment Status:</strong> 
+                            <span className={`status-badge ${selectedBill.paymentStatus}`}>
+                              {selectedBill.paymentStatus}
+                            </span>
+                          </div>
+                          <div>
+                            <strong>Total Amount:</strong> ${selectedBill.finalAmount || selectedBill.total}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="detail-section">
+                        <h4>Items</h4>
+                        <table className="items-table">
+                          <thead>
+                            <tr>
+                              <th>Item</th>
+                              <th>Quantity</th>
+                              <th>Price</th>
+                              <th>Subtotal</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {selectedBill.items.map((item, idx) => (
+                              <tr key={idx}>
+                                <td>{item.name}</td>
+                                <td>{item.quantity}</td>
+                                <td>${item.price.toFixed(2)}</td>
+                                <td>${item.subtotal.toFixed(2)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                          <tfoot>
+                            <tr>
+                              <td colSpan="3" style={{textAlign: 'right'}}><strong>Subtotal:</strong></td>
+                              <td>${selectedBill.totalAmount.toFixed(2)}</td>
+                            </tr>
+                            <tr>
+                              <td colSpan="3" style={{textAlign: 'right'}}><strong>Tax:</strong></td>
+                              <td>${selectedBill.tax.toFixed(2)}</td>
+                            </tr>
+                            <tr>
+                              <td colSpan="3" style={{textAlign: 'right'}}><strong>Total:</strong></td>
+                              <td>${(selectedBill.finalAmount || selectedBill.total).toFixed(2)}</td>
+                            </tr>
+                          </tfoot>
+                        </table>
                       </div>
                       
                       <div className="detail-section">
                         <h4>Customer Information</h4>
-                        <p><strong>Name:</strong> {selectedTransaction.user?.name || 'Unknown'}</p>
-                        <p><strong>Email:</strong> {selectedTransaction.user?.email || 'Unknown'}</p>
+                        <div>
+                          <strong>User ID:</strong> {selectedBill.userId}
+                        </div>
+                        {/* Add more customer info if available */}
                       </div>
                       
-                      {selectedTransaction.shippingAddress && (
-                        <div className="detail-section">
-                          <h4>Shipping Address</h4>
-                          <p>{selectedTransaction.shippingAddress.street}</p>
-                          <p>{selectedTransaction.shippingAddress.city}, {selectedTransaction.shippingAddress.state} {selectedTransaction.shippingAddress.zipCode}</p>
-                          <p>{selectedTransaction.shippingAddress.country}</p>
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="detail-panel">
-                      <h4>Items</h4>
-                      <table className="items-table">
-                        <thead>
-                          <tr>
-                            <th>Product</th>
-                            <th>Price</th>
-                            <th>Quantity</th>
-                            <th>Total</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {selectedTransaction.items?.map((item, index) => (
-                            <tr key={index}>
-                              <td>{item.product?.name || 'Unknown Product'}</td>
-                              <td>${item.price?.toFixed(2) || '0.00'}</td>
-                              <td>{item.quantity}</td>
-                              <td>${(item.price * item.quantity).toFixed(2)}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                    
-                    <div className="action-panel">
-                      <h4>Actions</h4>
-                      <div className="status-controls">
-                        <select 
-                          defaultValue={selectedTransaction.status}
-                          onChange={(e) => handleUpdateStatus(selectedTransaction._id, e.target.value)}
-                        >
-                          <option value="pending">Pending</option>
-                          <option value="processing">Processing</option>
-                          <option value="completed">Completed</option>
-                          <option value="cancelled">Cancelled</option>
-                        </select>
-                        
+                      <div className="action-buttons">
                         <button 
-                          className="blockchain-button"
-                          onClick={() => handleRecordBlockchain(selectedTransaction._id)}
-                          disabled={selectedTransaction.blockchainVerified}
+                          className="print-bill-button"
+                          onClick={() => {
+                            // Open in print view
+                            const printWindow = window.open('', '_blank');
+                            const styles = `
+                              body { font-family: Arial, sans-serif; padding: 20px; }
+                              .bill-header { text-align: center; margin-bottom: 20px; }
+                              .bill-header h1 { margin-bottom: 5px; }
+                              table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+                              th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
+                              th { background-color: #f9f9f9; }
+                              .bill-footer { margin-top: 30px; text-align: center; font-size: 12px; }
+                              .bill-total { margin-top: 20px; text-align: right; }
+                            `;
+                            
+                            const content = `
+                              <!DOCTYPE html>
+                              <html>
+                              <head>
+                                <title>Bill #${selectedBill.billNumber || selectedBill.invoiceNumber}</title>
+                                <style>${styles}</style>
+                              </head>
+                              <body>
+                                <div class="bill-header">
+                                  <h1>ChainBazzar</h1>
+                                  <p>Invoice #${selectedBill.billNumber || selectedBill.invoiceNumber}</p>
+                                  <p>Date: ${new Date(selectedBill.billDate || selectedBill.createdAt).toLocaleDateString()}</p>
+                                </div>
+                                
+                                <h3>Bill Information</h3>
+                                <div>Order ID: ${selectedBill.orderId}</div>
+                                <div>Payment Status: ${selectedBill.paymentStatus}</div>
+                                
+                                <h3>Items</h3>
+                                <table>
+                                  <thead>
+                                    <tr>
+                                      <th>Item</th>
+                                      <th>Quantity</th>
+                                      <th>Price</th>
+                                      <th>Subtotal</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    ${selectedBill.items.map(item => `
+                                      <tr>
+                                        <td>${item.name}</td>
+                                        <td>${item.quantity}</td>
+                                        <td>$${item.price.toFixed(2)}</td>
+                                        <td>$${item.subtotal.toFixed(2)}</td>
+                                      </tr>
+                                    `).join('')}
+                                  </tbody>
+                                </table>
+                                
+                                <div class="bill-total">
+                                  <div><strong>Subtotal:</strong> $${selectedBill.totalAmount.toFixed(2)}</div>
+                                  <div><strong>Tax:</strong> $${selectedBill.tax.toFixed(2)}</div>
+                                  <div><strong>Total:</strong> $${(selectedBill.finalAmount || selectedBill.total).toFixed(2)}</div>
+                                </div>
+                                
+                                <div class="bill-footer">
+                                  <p>Thank you for shopping with ChainBazzar!</p>
+                                </div>
+                              </body>
+                              </html>
+                            `;
+                            
+                            printWindow.document.open();
+                            printWindow.document.write(content);
+                            printWindow.document.close();
+                            setTimeout(() => printWindow.print(), 250);
+                          }}
                         >
-                          {selectedTransaction.blockchainVerified 
-                            ? 'Blockchain Verified' 
-                            : 'Record to Blockchain'}
+                          Print Bill
                         </button>
                       </div>
-                      
-                      {selectedTransaction.blockchainTxId && (
-                        <div className="blockchain-info">
-                          <p><strong>Blockchain Transaction:</strong></p>
-                          <p className="blockchain-hash">{selectedTransaction.blockchainTxId}</p>
-                        </div>
-                      )}
                     </div>
                   </div>
                 ) : (
-                  <div className="transactions-list">
-                    <table className="transaction-table">
-                      <thead>
-                        <tr>
-                          <th>Date</th>
-                          <th>Order ID</th>
-                          <th>Customer</th>
-                          <th>Amount</th>
-                          <th>Status</th>
-                          <th>Blockchain</th>
-                          <th>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {transactions.map(transaction => (
-                          <tr key={transaction._id}>
-                            <td>{new Date(transaction.createdAt).toLocaleDateString()}</td>
-                            <td>{transaction._id.substring(0, 8)}...</td>
-                            <td>{transaction.user?.name || 'Unknown'}</td>
-                            <td>${transaction.totalAmount?.toFixed(2) || '0.00'}</td>
-                            <td>
-                              <span className={`status-badge status-${transaction.status}`}>
-                                {transaction.status}
-                              </span>
-                            </td>
-                            <td>
-                              {transaction.blockchainVerified ? (
-                                <span className="blockchain-verified">Verified</span>
-                              ) : (
-                                <span className="blockchain-unverified">Unverified</span>
-                              )}
-                            </td>
-                            <td>
-                              <button 
-                                className="action-button view-button"
-                                onClick={() => handleViewTransaction(transaction._id)}
-                              >
-                                View
-                              </button>
-                            </td>
+                  // Bills list view
+                  <>
+                    <div className="table-container">
+                      <table className="data-table">
+                        <thead>
+                          <tr>
+                            <th>Bill Number</th>
+                            <th>Date</th>
+                            <th>Customer ID</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                            <th>Actions</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                        </thead>
+                        <tbody>
+                          {bills.length > 0 ? bills.map(bill => (
+                            <tr key={bill._id || bill.id}>
+                              <td>{bill.billNumber || bill.invoiceNumber}</td>
+                              <td>{new Date(bill.billDate || bill.createdAt).toLocaleDateString()}</td>
+                              <td>{bill.userId}</td>
+                              <td>${(bill.finalAmount || bill.total).toFixed(2)}</td>
+                              <td>
+                                <span className={`status-badge ${bill.paymentStatus}`}>
+                                  {bill.paymentStatus}
+                                </span>
+                              </td>
+                              <td>
+                                <button 
+                                  className="action-button view"
+                                  onClick={() => setSelectedBill(bill)}
+                                >
+                                  View Details
+                                </button>
+                              </td>
+                            </tr>
+                          )) : (
+                            <tr>
+                              <td colSpan="6" className="no-data">No bills found</td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
                 )}
               </div>
             )}
@@ -1047,7 +1112,7 @@ function AdminDashboard() {
                               className="stock-input"
                             />
                           </td>
-                          <td>{product.seller || 'Unassigned'}</td>
+                          <td>{product.sellerName || product.seller || 'Unassigned'}</td>
                           <td>
                             <button
                               className={`verification-button ${product.isVerified ? 'verified' : 'unverified'}`}
