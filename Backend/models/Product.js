@@ -80,7 +80,10 @@ const productSchema = new mongoose.Schema({
   },
   seller: {
     type: String,
-    required: true
+    required: true,
+    // Can be either the MongoDB ObjectId of the seller as a string,
+    // or the seller's username string - both formats are supported
+    // This is used to link products to their respective sellers
   },
   countInStock: {
     type: Number,

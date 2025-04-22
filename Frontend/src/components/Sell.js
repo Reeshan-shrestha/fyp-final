@@ -46,41 +46,57 @@ function Sell() {
         return;
       }
       
+      // Ensure user is a seller
+      if (currentUser.role !== 'seller' && !currentUser.isSeller) {
+        setError('Only seller accounts can access this dashboard');
+        setProducts([]);
+        setLoading(false);
+        return;
+      }
+      
       // Get seller identification
       const sellerId = currentUser._id || currentUser.id;
       const sellerUsername = currentUser.username;
       
-      console.log('Current seller:', {
+      console.log('Fetching products for seller:', {
         id: sellerId,
         username: sellerUsername,
-        role: currentUser.role,
-        fullUser: currentUser
+        role: currentUser.role
       });
       
+      // Get token for authentication
+      const token = localStorage.getItem('chainbazzar_auth_token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      
       try {
-        // Get token for authentication if available
-        const token = localStorage.getItem('chainbazzar_auth_token');
-        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        // Use seller USERNAME to get products - this is critical because the backend
+        // stores the seller as a String that may not match the MongoDB ID
+        // This fixes the issue where no products are found for TechVision
+        const productsData = await apiService.getProducts({ 
+          seller: sellerUsername,  // Use username as primary filter
+          sellerId: sellerId,      // Use ID as secondary filter
+          sellerName: sellerUsername // Use sellerName as additional identifier
+        });
         
-        // Determine best seller identifier to use
-        let sellerIdentifier;
-        if (sellerUsername && ['TechVision', 'SportStyle', 'GourmetDelights', 'FashionFusion', 'SmartHome'].includes(sellerUsername)) {
-          // If username matches one of our known sellers, use that
-          sellerIdentifier = sellerUsername;
-        } else {
-          // Otherwise use ID
-          sellerIdentifier = sellerId;
+        console.log(`Retrieved ${productsData.length} products for seller ${sellerUsername}`);
+        
+        // Verify these are truly the seller's products - include both username and ID matching
+        const filteredProducts = productsData.filter(product => {
+          const productSellerId = product.seller?._id || product.seller;
+          const productSellerName = product.sellerName;
+          
+          // Match by ID, username, or sellerName
+          return productSellerId === sellerId || 
+                 productSellerId === sellerUsername || 
+                 productSellerName === sellerUsername;
+        });
+        
+        if (filteredProducts.length !== productsData.length) {
+          console.warn(`Filtering removed ${productsData.length - filteredProducts.length} products that didn't belong to this seller`);
         }
         
-        console.log('Using seller identifier for filtering:', sellerIdentifier);
-        
-        // Pass the seller identifier as a filter parameter
-        const productsData = await apiService.getProducts({ seller: sellerIdentifier });
-        
-        console.log('Seller products fetched:', productsData);
-        
-        // Map database fields to frontend fields
-        const mappedProducts = productsData.map(product => ({
+        // Map database fields to frontend fields if needed
+        const mappedProducts = filteredProducts.map(product => ({
           ...product,
           stock: product.countInStock || product.stock || 0,
           isVerified: product.verified || product.isVerified || false
@@ -88,16 +104,9 @@ function Sell() {
         
         setProducts(mappedProducts);
       } catch (err) {
-        console.error('Error fetching products from API, using mock data:', err);
-        
-        // Fallback to mock data
-        // Use seller username preferentially as it's more stable than IDs
-        const sellerIdentifier = sellerUsername || sellerId;
-        const mockData = await apiService.getProducts({ seller: sellerIdentifier });
-        
-        console.log('Using mock products for seller:', mockData);
-        
-        setProducts(mockData);
+        console.error('Error fetching products:', err);
+        setError('Failed to load products. Please try again later or contact support.');
+        setProducts([]);
       }
     } catch (err) {
       console.error('Error in fetchProducts:', err);
@@ -183,24 +192,14 @@ function Sell() {
     try {
       setProductActionInProgress(true);
       
-      // Get current seller ID and username
+      // Get current seller ID
       const sellerId = user?._id || user?.id;
       const sellerUsername = user?.username;
       
-      if (!sellerId) {
+      if (!sellerId || !sellerUsername) {
         setProductFormError('You must be logged in as a seller to add products');
         setProductActionInProgress(false);
         return;
-      }
-      
-      // Determine best seller identifier to use
-      let sellerIdentifier;
-      if (sellerUsername && ['TechVision', 'SportStyle', 'GourmetDelights', 'FashionFusion', 'SmartHome'].includes(sellerUsername)) {
-        // If username matches one of our known sellers, use that
-        sellerIdentifier = sellerUsername;
-      } else {
-        // Otherwise use ID
-        sellerIdentifier = sellerId;
       }
       
       const productData = {
@@ -209,39 +208,32 @@ function Sell() {
         // Map frontend fields to database fields
         countInStock: parseInt(productForm.stock),
         verified: false, // New products are unverified by default
-        seller: sellerIdentifier
+        seller: sellerUsername, // Use username instead of ID
+        sellerId: sellerId.toString(), // Store the ID as a reference
+        sellerName: sellerUsername // Add seller name for display
       };
       
-      console.log('Adding new product for seller:', sellerIdentifier, productData);
+      console.log('Adding new product for seller:', sellerId, productData);
       
-      try {
-        // Try to use the real API
-        const token = localStorage.getItem('chainbazzar_auth_token');
-        if (!token) {
-          throw new Error('No authentication token found');
-        }
-        
-        // Use the wrapped API call that has mock fallback
-        await apiService.createProduct(productData);
-        
-        setProductActionSuccess('Product added successfully');
-      } catch (apiError) {
-        console.warn('Backend API error, using mock functionality:', apiError);
-        
-        // Manually add to our local product state with a mock ID
-        const newProduct = {
-          ...productData,
-          _id: 'mock_' + Date.now(),
-          createdAt: new Date().toISOString()
-        };
-        
-        setProducts(prev => [...prev, newProduct]);
-        
-        setProductActionSuccess('Product added successfully (mock data - backend unavailable)');
+      // Try to use the API
+      const token = localStorage.getItem('chainbazzar_auth_token');
+      if (!token) {
+        setProductFormError('Authentication token not found. Please log in again.');
+        setProductActionInProgress(false);
+        return;
       }
       
-      closeProductModal();
-      fetchProducts(); // Refresh the list
+      // Use the API to create the product
+      const result = await apiService.createProduct(productData);
+      
+      if (result && result.data) {
+        console.log('Product added successfully:', result.data);
+        setProductActionSuccess('Product added successfully');
+        closeProductModal();
+        fetchProducts(); // Refresh the list
+      } else {
+        throw new Error('Failed to add product - no data returned from server');
+      }
     } catch (err) {
       console.error('Error adding product:', err);
       setProductFormError(`Failed to add product: ${err.message}`);
@@ -266,18 +258,14 @@ function Sell() {
     try {
       setProductActionInProgress(true);
       
-      // Get current seller ID and username
+      // Get current seller ID
       const sellerId = user?._id || user?.id;
       const sellerUsername = user?.username;
       
-      // Determine best seller identifier to use
-      let sellerIdentifier;
-      if (sellerUsername && ['TechVision', 'SportStyle', 'GourmetDelights', 'FashionFusion', 'SmartHome'].includes(sellerUsername)) {
-        // If username matches one of our known sellers, use that
-        sellerIdentifier = sellerUsername;
-      } else {
-        // Otherwise use ID
-        sellerIdentifier = sellerId;
+      if (!sellerId || !sellerUsername) {
+        setProductFormError('You must be logged in as a seller to update products');
+        setProductActionInProgress(false);
+        return;
       }
       
       const productData = {
@@ -286,40 +274,26 @@ function Sell() {
         // Map frontend fields to database fields
         countInStock: parseInt(productForm.stock),
         verified: editingProduct.isVerified || editingProduct.verified, // Preserve verification status
-        seller: sellerIdentifier // Maintain seller association
+        seller: sellerUsername, // Use username instead of ID
+        sellerId: sellerId.toString(), // Store the ID as a reference
+        sellerName: sellerUsername // Add seller name for display
       };
       
-      console.log(`Updating product ${editingProduct._id} for seller ${sellerIdentifier}:`, productData);
+      console.log(`Updating product ${editingProduct._id} for seller ${sellerId}:`, productData);
       
-      try {
-        // Try to use the real API
-        const token = localStorage.getItem('chainbazzar_auth_token');
-        if (!token) {
-          throw new Error('No authentication token found');
-        }
-        
-        // First check if the product ID is a mock one
-        if (editingProduct._id.startsWith('mock_')) {
-          throw new Error('Cannot update mock product with real API');
-        }
-        
-        await apiService.patch(
-          `${config.API_BASE_URL}/api/products/${editingProduct._id}`,
-          productData,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-      } catch (apiError) {
-        console.warn('Backend API error, using mock functionality:', apiError);
-        
-        // Update in our local product state
-        setProducts(prev => 
-          prev.map(p => p._id === editingProduct._id ? { ...p, ...productData } : p)
-        );
-        
-        setProductActionSuccess('Product updated successfully (mock data - backend unavailable)');
-        closeProductModal();
+      // Try to use the API
+      const token = localStorage.getItem('chainbazzar_auth_token');
+      if (!token) {
+        setProductFormError('Authentication token not found. Please log in again.');
+        setProductActionInProgress(false);
         return;
       }
+      
+      await apiService.patch(
+        `${config.API_BASE_URL}/api/products/${editingProduct._id}`,
+        productData,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
       
       setProductActionSuccess('Product updated successfully');
       closeProductModal();
@@ -340,34 +314,18 @@ function Sell() {
     try {
       setLoading(true);
       
-      // Check if it's a mock product
-      const isMockProduct = productId.startsWith('mock_');
-      
-      try {
-        // Try to use the real API if not a mock product
-        if (!isMockProduct) {
-          const token = localStorage.getItem('chainbazzar_auth_token');
-          if (!token) {
-            throw new Error('No authentication token found');
-          }
-          
-          await apiService.delete_(
-            `${config.API_BASE_URL}/api/products/${productId}`,
-            { headers: { Authorization: `Bearer ${token}` } }
-          );
-        } else {
-          throw new Error('Mock product, using local state update');
-        }
-      } catch (apiError) {
-        console.warn('Backend API error or mock product, using mock functionality:', apiError);
-        
-        // Remove from our local product state
-        setProducts(prev => prev.filter(p => p._id !== productId));
-        
-        setProductActionSuccess('Product removed successfully (mock data - backend unavailable)');
+      // Try to use the API
+      const token = localStorage.getItem('chainbazzar_auth_token');
+      if (!token) {
+        setError('Authentication token not found. Please log in again.');
         setLoading(false);
         return;
       }
+      
+      await apiService.delete_(
+        `${config.API_BASE_URL}/api/products/${productId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
       
       setProductActionSuccess('Product removed successfully');
       fetchProducts(); // Refresh the list
@@ -388,37 +346,19 @@ function Sell() {
     try {
       setLoading(true);
       
-      // Check if it's a mock product
-      const isMockProduct = productId.startsWith('mock_');
-      
-      try {
-        // Try to use the real API if not a mock product
-        if (!isMockProduct) {
-          const token = localStorage.getItem('chainbazzar_auth_token');
-          if (!token) {
-            throw new Error('No authentication token found');
-          }
-          
-          await apiService.patch(
-            `${config.API_BASE_URL}/api/products/${productId}`,
-            { countInStock: parseInt(newStock) },
-            { headers: { Authorization: `Bearer ${token}` } }
-          );
-        } else {
-          throw new Error('Mock product, using local state update');
-        }
-      } catch (apiError) {
-        console.warn('Backend API error or mock product, using mock functionality:', apiError);
-        
-        // Update in our local product state
-        setProducts(prev => 
-          prev.map(p => p._id === productId ? { ...p, stock: parseInt(newStock), countInStock: parseInt(newStock) } : p)
-        );
-        
-        setProductActionSuccess('Stock updated successfully (mock data - backend unavailable)');
+      // Try to use the API
+      const token = localStorage.getItem('chainbazzar_auth_token');
+      if (!token) {
+        setError('Authentication token not found. Please log in again.');
         setLoading(false);
         return;
       }
+      
+      await apiService.patch(
+        `${config.API_BASE_URL}/api/products/${productId}`,
+        { countInStock: parseInt(newStock) },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
       
       setProductActionSuccess('Stock updated successfully');
       fetchProducts(); // Refresh the list
@@ -435,13 +375,16 @@ function Sell() {
       <div className="sell-header">
         <h1>Seller Dashboard: {user?.username || 'Seller'}</h1>
         <p>Manage your products and track sales for your store</p>
+        <div className="seller-id-badge">
+          <span>Logged in as:</span> <strong>{user?.username}</strong> (Seller ID: {user?._id || user?.id})
+        </div>
       </div>
 
       <div className="sell-stats">
         <div className="stat-card">
-          <h3>Store Statistics</h3>
+          <h3>Your Store Statistics</h3>
           <div className="stat-item">
-            <span className="stat-label">Products:</span>
+            <span className="stat-label">Your Products:</span>
             <span className="stat-value">{products.length}</span>
           </div>
           <div className="stat-item">
@@ -451,9 +394,9 @@ function Sell() {
             </span>
           </div>
           <div className="stat-item">
-            <span className="stat-label">Store ID:</span>
-            <span className="stat-value" title={user?._id || user?.id}>
-              {user?.username || 'Unknown'}
+            <span className="stat-label">Account Type:</span>
+            <span className="stat-value" title={user?.role}>
+              Seller Account
             </span>
           </div>
         </div>
@@ -472,7 +415,10 @@ function Sell() {
         <div className="loading">Loading your products...</div>
       ) : (
         <div className="products-section">
-          <h2>{user?.username}'s Products</h2>
+          <h2>Products owned by {user?.username}</h2>
+          <div className="products-section-note">
+            <p>Note: Only products that belong to your seller account are displayed here.</p>
+          </div>
           {products.length === 0 ? (
             <div className="no-products">
               <p>You don't have any products yet. Start selling by adding a product.</p>

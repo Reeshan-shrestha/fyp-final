@@ -337,4 +337,36 @@ button:disabled {
 .stat-value {
   font-weight: 600;
   color: #333;
+}
+
+/* Add styling for the seller identity badge */
+.seller-id-badge {
+  margin-top: 10px;
+  display: inline-block;
+  background-color: #e0f2fe;
+  border: 1px solid #bae6fd;
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-size: 14px;
+  color: #0369a1;
+}
+
+.seller-id-badge strong {
+  font-weight: 600;
+}
+
+/* Add styling for the products section note */
+.products-section-note {
+  margin-top: -10px;
+  margin-bottom: 15px;
+  padding: 10px;
+  background-color: #fffbeb;
+  border-left: 3px solid #fbbf24;
+  border-radius: 4px;
+}
+
+.products-section-note p {
+  margin: 0;
+  font-size: 14px;
+  color: #854d0e;
 } 

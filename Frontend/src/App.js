@@ -18,6 +18,7 @@ import Cart from './components/Cart';
 import OrderConfirmation from './components/OrderConfirmation';
 import ThankYouPage from './components/ThankYouPage';
 import Sell from './components/Sell';
+import Admin from './components/Admin';
 import './App.css';
 
 // Protected route component
@@ -76,7 +77,12 @@ const App = () => {
                   } />
                   <Route path="/signin" element={<SignIn />} />
                   <Route path="/signup" element={<SignUp />} />
-                  <Route path="/admin" element={<AdminDashboard />} />
+                  <Route path="/admin" element={
+                    <ProtectedRoute>
+                      <Admin />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/admin-dashboard" element={<AdminDashboard />} />
                   <Route path="/cart" element={<Cart />} />
                   <Route path="/order-confirmation" element={<OrderConfirmation />} />
                   <Route path="/thank-you" element={<ThankYouPage />} />

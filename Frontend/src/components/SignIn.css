@@ -220,4 +220,47 @@
 .role-label span {
   font-size: 12px;
   color: #666;
+}
+
+/* Add styling for the seller accounts section */
+.seller-accounts-section {
+  margin-top: 20px;
+  padding: 15px;
+  background-color: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.seller-accounts-section h3 {
+  font-size: 16px;
+  margin-top: 0;
+  margin-bottom: 8px;
+  color: #1e40af;
+}
+
+.seller-accounts-section p {
+  font-size: 14px;
+  color: #64748b;
+  margin-bottom: 12px;
+}
+
+.seller-account-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.seller-account-button {
+  background-color: #e0e7ff;
+  color: #4338ca;
+  border: 1px solid #c7d2fe;
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.seller-account-button:hover {
+  background-color: #c7d2fe;
 } 

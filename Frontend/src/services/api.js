@@ -60,28 +60,34 @@ export const recordBlockchainTransaction = async (orderId, txData) => {
 
 // Get product details
 export const getProduct = async (productId) => {
-  return handleApiRequestWithMockFallback(
-    // Real API call
-    (baseUrl) => axios.get(`${baseUrl}/api/products/${productId}`),
-    // Mock fallback
-    () => mockProducts.getProductById(productId)
-  );
+  try {
+    const baseUrl = getBaseUrl();
+    const response = await axios.get(`${baseUrl}/api/products/${productId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching product details:', error);
+    throw error;
+  }
 };
 
 // Get all products
 export const getProducts = async (filters = {}) => {
-  return handleApiRequestWithMockFallback(
-    // Real API call
-    (baseUrl) => axios.get(`${baseUrl}/api/products`, { params: filters }),
-    // Mock fallback
-    () => {
-      // If we're looking for a specific seller's products, filter the mock data
-      if (filters.seller) {
-        return mockProducts.getSellerProducts(filters.seller);
-      }
-      return mockProducts.getAllProducts(filters);
+  try {
+    // Real API call with explicit seller filtering
+    const baseUrl = getBaseUrl();
+    console.log('Getting products with filters:', filters);
+    
+    // If we're filtering by seller, make sure the API includes this parameter
+    if (filters.seller) {
+      console.log('Filtering products by seller:', filters.seller);
     }
-  );
+    
+    const response = await axios.get(`${baseUrl}/api/products`, { params: filters });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching products:', error);
+    throw error;
+  }
 };
 
 // Get product reviews
@@ -197,42 +203,12 @@ export const delete_ = async (url, config = {}) => {
 
 // Create a product
 export const createProduct = async (productData) => {
-  return handleApiRequestWithMockFallback(
-    // Real API call
-    (baseUrl) => axios.post(`${baseUrl}/api/products`, productData),
-    // Mock fallback
-    () => {
-      // Normalize seller information for consistent storage
-      let seller = productData.seller;
-      
-      // Handle different seller ID formats
-      if (typeof seller === 'string') {
-        if (seller.includes('TechVision')) seller = 'seller1';
-        else if (seller.includes('SportStyle')) seller = 'seller2';
-        else if (seller.includes('GourmetDelights')) seller = 'seller3';
-        else if (seller.includes('FashionFusion')) seller = 'seller4';
-        else if (seller.includes('SmartHome')) seller = 'seller5';
-      }
-      
-      // Create a mock product with the provided data
-      const mockProduct = {
-        ...productData,
-        _id: 'mock_' + Date.now(),
-        seller: seller, // Normalized seller ID
-        createdAt: new Date().toISOString()
-      };
-      
-      // Add product to mock data for future queries
-      mockProducts.default.push(mockProduct);
-      
-      console.log('Created mock product:', mockProduct);
-      
-      // Return mock response
-      return { 
-        data: mockProduct,
-        status: 200,
-        statusText: 'OK (Mock)'
-      };
-    }
-  );
+  try {
+    const baseUrl = getBaseUrl();
+    const response = await axios.post(`${baseUrl}/api/products`, productData);
+    return response.data;
+  } catch (error) {
+    console.error('Error creating product:', error);
+    throw error;
+  }
 }; 

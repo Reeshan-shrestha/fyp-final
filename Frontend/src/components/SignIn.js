@@ -53,8 +53,7 @@ const SignIn = () => {
       
       // Log credential information for debugging
       console.log('Attempting login with:', {
-        username: formData.username,
-        password: formData.password
+        username: formData.username
       });
       
       // Use the auth context login method instead of direct fetch

@@ -1,0 +1,38 @@
+.admin-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.admin-container h1 {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+  color: #1e3a8a;
+}
+
+.admin-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+.admin-section {
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.admin-section h2 {
+  font-size: 1.25rem;
+  margin-bottom: 1rem;
+  color: #1e3a8a;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 0.5rem;
+}
+
+.admin-section p {
+  margin-bottom: 1.5rem;
+  color: #4b5563;
+} 

@@ -279,7 +279,7 @@ const ProductDetail = ({ user }) => {
                 <InfoItem>
                   <StorefrontIcon sx={{ mr: 1.5 }} />
                   <Typography variant="body2">
-                    <strong>Seller:</strong> {product.seller || 'ChainBazzar Marketplace'}
+                    <strong>Seller:</strong> {product.sellerName || product.seller || 'ChainBazzar Marketplace'}
                   </Typography>
                 </InfoItem>
               </Stack>
