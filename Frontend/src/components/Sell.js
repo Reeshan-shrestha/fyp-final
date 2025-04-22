@@ -37,7 +37,18 @@ function Sell() {
       setLoading(true);
       setError(null);
       
-      // Try to get products from API with authentication
+      // Get the current user information
+      const currentUser = user;
+      if (!currentUser || (!currentUser._id && !currentUser.id)) {
+        setError('You must be logged in as a seller to view products');
+        setProducts([]);
+        setLoading(false);
+        return;
+      }
+      
+      const sellerId = currentUser._id || currentUser.id;
+      console.log('Current seller ID:', sellerId);
+      
       try {
         const token = localStorage.getItem('chainbazzar_auth_token');
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
@@ -45,34 +56,43 @@ function Sell() {
         // Use the apiService.getProducts method which has mock fallback built in
         const productsData = await apiService.getProducts();
         
-        console.log('Products fetched:', productsData);
+        console.log('All products fetched:', productsData);
         
-        // Filter products to only show those belonging to the current user
-        const userProducts = productsData.filter(product => 
-          product.seller === user._id || product.seller === user.id
-        );
+        // Filter products to only show those belonging to the current seller
+        const sellerProducts = productsData.filter(product => {
+          const productSeller = product.seller?._id || product.seller;
+          return productSeller === sellerId;
+        });
+        
+        console.log('Filtered seller products:', sellerProducts);
         
         // Map database fields to frontend fields
-        const mappedProducts = userProducts.map(product => ({
+        const mappedProducts = sellerProducts.map(product => ({
           ...product,
-          stock: product.countInStock,
-          isVerified: product.verified
+          stock: product.countInStock || product.stock || 0,
+          isVerified: product.verified || product.isVerified || false
         }));
         
         setProducts(mappedProducts);
       } catch (err) {
         console.error('Error fetching products from API, using mock data:', err);
+        
         // Fallback to mock data
         const mockData = mockProducts;
         
-        // Filter mock data to simulate user's products
-        const userMockProducts = mockData.filter((_, index) => index % 3 === 0); // Just a simple filter for mock data
+        // Filter mock data to simulate seller's products
+        // For demo purposes, we'll assign first 2 products to each seller in a round-robin fashion
+        const sellerIndex = parseInt(sellerId.replace(/\D/g, '')) % 5 || 0;
+        const startIndex = sellerIndex * 2;
+        const userMockProducts = mockData.slice(startIndex, startIndex + 2);
+        
+        console.log(`Using mock products for seller index ${sellerIndex}:`, userMockProducts);
         
         setProducts(userMockProducts);
       }
     } catch (err) {
       console.error('Error in fetchProducts:', err);
-      setError('Failed to load products. Using mock data instead.');
+      setError('Failed to load products. Please try again later.');
     } finally {
       setLoading(false);
     }
@@ -154,13 +174,21 @@ function Sell() {
     try {
       setProductActionInProgress(true);
       
+      // Get current seller ID
+      const sellerId = user?._id || user?.id;
+      if (!sellerId) {
+        setProductFormError('You must be logged in as a seller to add products');
+        setProductActionInProgress(false);
+        return;
+      }
+      
       const productData = {
         ...productForm,
         price: parseFloat(productForm.price),
         // Map frontend fields to database fields
         countInStock: parseInt(productForm.stock),
         verified: false, // New products are unverified by default
-        seller: user._id || user.id
+        seller: sellerId
       };
       
       console.log('Adding new product:', productData);
@@ -369,8 +397,8 @@ function Sell() {
   return (
     <div className="sell-container">
       <div className="sell-header">
-        <h1>Seller Dashboard</h1>
-        <p>Manage your products and track sales</p>
+        <h1>Seller Dashboard: {user?.username || 'Seller'}</h1>
+        <p>Manage your products and track sales for your store</p>
       </div>
 
       <div className="sell-actions">
@@ -383,10 +411,10 @@ function Sell() {
       {productActionSuccess && <div className="success-message">{productActionSuccess}</div>}
 
       {loading ? (
-        <div className="loading">Loading products...</div>
+        <div className="loading">Loading your products...</div>
       ) : (
         <div className="products-section">
-          <h2>Your Products</h2>
+          <h2>{user?.username}'s Products</h2>
           {products.length === 0 ? (
             <div className="no-products">
               <p>You don't have any products yet. Start selling by adding a product.</p>
