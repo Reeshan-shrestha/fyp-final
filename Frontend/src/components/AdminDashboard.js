@@ -22,6 +22,21 @@ function AdminDashboard() {
   const [dateFilter, setDateFilter] = useState('all');
   const [selectedTransaction, setSelectedTransaction] = useState(null);
   const [selectedBill, setSelectedBill] = useState(null);
+  
+  // Product management states
+  const [productModalOpen, setProductModalOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState(null);
+  const [productForm, setProductForm] = useState({
+    name: '',
+    description: '',
+    price: '',
+    category: '',
+    imageUrl: '',
+    stock: '',
+    isVerified: false
+  });
+  const [productFormError, setProductFormError] = useState(null);
+  const [productActionSuccess, setProductActionSuccess] = useState(null);
 
   useEffect(() => {
     if (activeTab === 'overview' || activeTab === 'billing') {
@@ -40,7 +55,7 @@ function AdminDashboard() {
       setProducts(response);
       
       // Calculate stats
-      const lowStock = response.filter(p => p.countInStock && p.countInStock < 5).length;
+      const lowStock = response.filter(p => p.stock && p.stock < 5).length;
       setStats(prev => ({
         ...prev,
         totalProducts: response.length,
@@ -48,6 +63,7 @@ function AdminDashboard() {
       }));
     } catch (err) {
       console.error('Error fetching products:', err);
+      setError('Failed to load products. Please try again later.');
     } finally {
       setLoading(false);
     }
@@ -217,38 +233,203 @@ function AdminDashboard() {
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
+    // Clear any success messages when changing tabs
+    setProductActionSuccess(null);
   };
 
-  const handleAddProduct = (e) => {
+  // Product management functions
+  const openAddProductModal = () => {
+    setEditingProduct(null);
+    setProductForm({
+      name: '',
+      description: '',
+      price: '',
+      category: '',
+      imageUrl: '',
+      stock: '',
+      isVerified: false
+    });
+    setProductModalOpen(true);
+  };
+
+  const openEditProductModal = (product) => {
+    setEditingProduct(product);
+    setProductForm({
+      name: product.name || '',
+      description: product.description || '',
+      price: product.price || '',
+      category: product.category || '',
+      imageUrl: product.imageUrl || '',
+      stock: product.stock || '',
+      isVerified: product.isVerified || false
+    });
+    setProductModalOpen(true);
+  };
+
+  const closeProductModal = () => {
+    setProductModalOpen(false);
+    setEditingProduct(null);
+    setProductFormError(null);
+  };
+
+  const handleProductFormChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setProductForm(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
+  };
+
+  const validateProductForm = () => {
+    if (!productForm.name.trim()) {
+      setProductFormError('Product name is required');
+      return false;
+    }
+    if (!productForm.price || isNaN(productForm.price) || parseFloat(productForm.price) <= 0) {
+      setProductFormError('Valid price is required');
+      return false;
+    }
+    if (!productForm.category.trim()) {
+      setProductFormError('Category is required');
+      return false;
+    }
+    if (!productForm.stock || isNaN(productForm.stock) || parseInt(productForm.stock) < 0) {
+      setProductFormError('Valid stock quantity is required');
+      return false;
+    }
+    return true;
+  };
+
+  const handleAddProduct = async (e) => {
     e.preventDefault();
-    // Implement add product logic
-    console.log('Adding product...');
+    setProductFormError(null);
+    
+    if (!validateProductForm()) {
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('chainbazzar_auth_token');
+      
+      const productData = {
+        ...productForm,
+        price: parseFloat(productForm.price),
+        stock: parseInt(productForm.stock)
+      };
+      
+      await apiService.post(
+        `${config.API_BASE_URL}/api/products`,
+        productData,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      setProductActionSuccess('Product added successfully');
+      closeProductModal();
+      fetchProducts();
+    } catch (err) {
+      console.error('Error adding product:', err);
+      setProductFormError('Failed to add product. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEditProduct = async (e) => {
+    e.preventDefault();
+    setProductFormError(null);
+    
+    if (!validateProductForm()) {
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('chainbazzar_auth_token');
+      
+      const productData = {
+        ...productForm,
+        price: parseFloat(productForm.price),
+        stock: parseInt(productForm.stock)
+      };
+      
+      await apiService.patch(
+        `${config.API_BASE_URL}/api/products/${editingProduct._id}`,
+        productData,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      setProductActionSuccess('Product updated successfully');
+      closeProductModal();
+      fetchProducts();
+    } catch (err) {
+      console.error('Error updating product:', err);
+      setProductFormError('Failed to update product. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleRemoveProduct = async (productId) => {
+    if (!window.confirm('Are you sure you want to delete this product?')) {
+      return;
+    }
+    
     try {
+      setLoading(true);
       const token = localStorage.getItem('chainbazzar_auth_token');
       await apiService.delete_(
         `${config.API_BASE_URL}/api/products/${productId}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      fetchProducts(); // Refresh the list
+      setProductActionSuccess('Product deleted successfully');
+      fetchProducts();
     } catch (err) {
       console.error('Error removing product:', err);
+      setError('Failed to delete product. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleUpdateStock = async (productId, newStock) => {
+    if (isNaN(newStock) || parseInt(newStock) < 0) {
+      return;
+    }
+    
     try {
+      setLoading(true);
       const token = localStorage.getItem('chainbazzar_auth_token');
       await apiService.patch(
         `${config.API_BASE_URL}/api/products/${productId}`,
-        { countInStock: parseInt(newStock) },
+        { stock: parseInt(newStock) },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      fetchProducts(); // Refresh the list
+      fetchProducts();
     } catch (err) {
       console.error('Error updating stock:', err);
+      setError('Failed to update stock. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleToggleVerification = async (productId, currentVerifiedStatus) => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('chainbazzar_auth_token');
+      await apiService.patch(
+        `${config.API_BASE_URL}/api/products/${productId}/verify`,
+        { isVerified: !currentVerifiedStatus },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setProductActionSuccess(`Product ${!currentVerifiedStatus ? 'verified' : 'unverified'} successfully`);
+      fetchProducts();
+    } catch (err) {
+      console.error('Error toggling verification:', err);
+      setError('Failed to update verification status. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -361,8 +542,22 @@ function AdminDashboard() {
           <div className="products-section">
             <div className="section-header">
               <h2>Product Management</h2>
-              <button className="add-product-btn">Add New Product</button>
+              <button className="add-product-btn" onClick={openAddProductModal}>Add New Product</button>
             </div>
+            
+            {productActionSuccess && (
+              <div className="success-message">
+                {productActionSuccess}
+                <button className="close-message" onClick={() => setProductActionSuccess(null)}>×</button>
+              </div>
+            )}
+            
+            {error && (
+              <div className="error-message">
+                {error}
+                <button className="close-message" onClick={() => setError(null)}>×</button>
+              </div>
+            )}
             
             {loading ? (
               <div className="loading">Loading products...</div>
@@ -388,21 +583,25 @@ function AdminDashboard() {
                         <td>
                           <input 
                             type="number" 
-                            value={product.countInStock || 0}
+                            value={product.stock || 0}
                             onChange={(e) => handleUpdateStock(product._id, e.target.value)}
                             min="0"
-                            className={product.countInStock < 5 ? "low-stock" : ""}
+                            className={product.stock < 5 ? "low-stock" : ""}
                           />
                         </td>
                         <td>
-                          <span className={`status-badge ${product.verified ? 'verified' : 'not-verified'}`}>
-                            {product.verified ? 'Verified' : 'Not Verified'}
+                          <span 
+                            className={`status-badge ${product.isVerified ? 'verified' : 'not-verified'}`}
+                            onClick={() => handleToggleVerification(product._id, product.isVerified)}
+                            style={{ cursor: 'pointer' }}
+                          >
+                            {product.isVerified ? 'Verified' : 'Not Verified'}
                           </span>
                         </td>
                         <td>
                           <button 
                             className="action-btn edit"
-                            onClick={() => console.log('Edit product:', product._id)}
+                            onClick={() => openEditProductModal(product)}
                           >
                             Edit
                           </button>
@@ -422,6 +621,121 @@ function AdminDashboard() {
                     )}
                   </tbody>
                 </table>
+              </div>
+            )}
+            
+            {/* Product Modal */}
+            {productModalOpen && (
+              <div className="modal-overlay">
+                <div className="product-modal">
+                  <div className="modal-header">
+                    <h3>{editingProduct ? 'Edit Product' : 'Add New Product'}</h3>
+                    <button className="close-btn" onClick={closeProductModal}>×</button>
+                  </div>
+                  
+                  {productFormError && (
+                    <div className="error-message">{productFormError}</div>
+                  )}
+                  
+                  <form onSubmit={editingProduct ? handleEditProduct : handleAddProduct}>
+                    <div className="form-group">
+                      <label htmlFor="name">Product Name *</label>
+                      <input
+                        type="text"
+                        id="name"
+                        name="name"
+                        value={productForm.name}
+                        onChange={handleProductFormChange}
+                        required
+                      />
+                    </div>
+                    
+                    <div className="form-group">
+                      <label htmlFor="description">Description</label>
+                      <textarea
+                        id="description"
+                        name="description"
+                        value={productForm.description}
+                        onChange={handleProductFormChange}
+                        rows="3"
+                      />
+                    </div>
+                    
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label htmlFor="price">Price ($) *</label>
+                        <input
+                          type="number"
+                          id="price"
+                          name="price"
+                          value={productForm.price}
+                          onChange={handleProductFormChange}
+                          min="0.01"
+                          step="0.01"
+                          required
+                        />
+                      </div>
+                      
+                      <div className="form-group">
+                        <label htmlFor="stock">Stock *</label>
+                        <input
+                          type="number"
+                          id="stock"
+                          name="stock"
+                          value={productForm.stock}
+                          onChange={handleProductFormChange}
+                          min="0"
+                          required
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="form-group">
+                      <label htmlFor="category">Category *</label>
+                      <input
+                        type="text"
+                        id="category"
+                        name="category"
+                        value={productForm.category}
+                        onChange={handleProductFormChange}
+                        required
+                      />
+                    </div>
+                    
+                    <div className="form-group">
+                      <label htmlFor="imageUrl">Image URL</label>
+                      <input
+                        type="text"
+                        id="imageUrl"
+                        name="imageUrl"
+                        value={productForm.imageUrl}
+                        onChange={handleProductFormChange}
+                        placeholder="https://example.com/image.jpg"
+                      />
+                    </div>
+                    
+                    <div className="form-group checkbox">
+                      <label>
+                        <input
+                          type="checkbox"
+                          name="isVerified"
+                          checked={productForm.isVerified}
+                          onChange={handleProductFormChange}
+                        />
+                        Verified Product
+                      </label>
+                    </div>
+                    
+                    <div className="form-actions">
+                      <button type="button" className="cancel-btn" onClick={closeProductModal}>
+                        Cancel
+                      </button>
+                      <button type="submit" className="submit-btn">
+                        {editingProduct ? 'Update Product' : 'Add Product'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
               </div>
             )}
           </div>
