@@ -13,7 +13,6 @@ import AddProduct from './components/AddProduct';
 import SignIn from './components/SignIn';
 import SignUp from './components/SignUp';
 import AdminDashboard from './components/AdminDashboard';
-import DevelopmentBanner from './components/DevelopmentBanner';
 import Cart from './components/Cart';
 import OrderConfirmation from './components/OrderConfirmation';
 import ThankYouPage from './components/ThankYouPage';
@@ -78,7 +77,7 @@ const App = () => {
       <AuthProvider>
         <CartProvider>
           <Router>
-            <div className="app">
+            <div className="app-container">
               <Navigation />
               <main className="main-content">
                 <Routes>
@@ -110,7 +109,6 @@ const App = () => {
                   <Route path="/thank-you" element={<ThankYouPage />} />
                 </Routes>
               </main>
-              <DevelopmentBanner />
             </div>
           </Router>
         </CartProvider>
