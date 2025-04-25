@@ -18,6 +18,7 @@ import OrderConfirmation from './components/OrderConfirmation';
 import ThankYouPage from './components/ThankYouPage';
 import Sell from './components/Sell';
 import Admin from './components/Admin';
+import Blockchain from './pages/Blockchain';
 import './App.css';
 
 // Protected route component
@@ -105,6 +106,7 @@ const App = () => {
                     </AdminRoute>
                   } />
                   <Route path="/cart" element={<Cart />} />
+                  <Route path="/blockchain" element={<Blockchain />} />
                   <Route path="/order-confirmation" element={<OrderConfirmation />} />
                   <Route path="/thank-you" element={<ThankYouPage />} />
                 </Routes>
