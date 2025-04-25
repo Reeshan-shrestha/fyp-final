@@ -124,4 +124,49 @@ router.get('/:id', auth, async (req, res) => {
   }
 });
 
+// User cancels their order
+router.patch('/:id/cancel', auth, async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id);
+    
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    // Make sure the user is authorized to cancel this order
+    if (order.user.toString() !== req.user.id && req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Not authorized to cancel this order' });
+    }
+
+    // Check if order is in a cancellable state
+    if (!['pending', 'processing'].includes(order.status)) {
+      return res.status(400).json({ 
+        message: 'Cannot cancel order in current status',
+        currentStatus: order.status 
+      });
+    }
+
+    // Update order status to cancelled
+    order.status = 'cancelled';
+    
+    // Save the order with updated status
+    const updatedOrder = await order.save();
+
+    // Restore product stock for each item in the order
+    for (const item of order.items) {
+      await Product.findByIdAndUpdate(item.product, {
+        $inc: { countInStock: item.quantity }
+      });
+    }
+
+    res.json({
+      message: 'Order cancelled successfully',
+      order: updatedOrder
+    });
+  } catch (error) {
+    console.error('Error cancelling order:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 module.exports = router; 

@@ -78,6 +78,10 @@ const productSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  // IPFS content identifier for the product image
+  ipfsCid: {
+    type: String
+  },
   seller: {
     type: String,
     required: true,
@@ -110,12 +114,33 @@ const productSchema = new mongoose.Schema({
   verifiedAt: {
     type: Date
   },
+  // Blockchain transaction hash that verified this product 
+  verificationTxHash: {
+    type: String
+  },
   createdAt: {
     type: Date,
     default: Date.now
   }
 }, {
   timestamps: true
+});
+
+// Add virtual for full IPFS URL
+productSchema.virtual('ipfsUrl').get(function() {
+  if (!this.ipfsCid) return null;
+  return `ipfs://${this.ipfsCid}`;
+});
+
+// Configure toJSON to include virtuals and remove _id
+productSchema.set('toJSON', {
+  virtuals: true,
+  transform: (doc, ret) => {
+    ret.id = ret._id;
+    delete ret._id;
+    delete ret.__v;
+    return ret;
+  }
 });
 
 module.exports = mongoose.model('Product', productSchema); 

@@ -2,6 +2,21 @@ const express = require('express');
 const router = express.Router();
 const Product = require('../models/Product');
 const mongoose = require('mongoose');
+const { uploadToIpfsMiddleware } = require('../middleware/ipfsUpload');
+const { getIPFSUrl, convertUrlToIPFS, isIPFSAvailable } = require('../services/ipfsService');
+
+// Helper to format product with IPFS URLs
+const formatProductWithIpfs = (product) => {
+  const formattedProduct = product.toObject ? product.toObject() : { ...product };
+  
+  // Convert imageUrl to IPFS URL if it's an IPFS CID
+  if (formattedProduct.ipfsCid) {
+    formattedProduct.ipfsUrl = `ipfs://${formattedProduct.ipfsCid}`;
+    formattedProduct.imageUrl = getIPFSUrl(formattedProduct.ipfsCid);
+  }
+  
+  return formattedProduct;
+};
 
 // Get all products - with filtering options including seller filter
 router.get('/', async (req, res) => {
@@ -82,10 +97,13 @@ router.get('/', async (req, res) => {
     // Get the products
     const products = await query.exec();
     
+    // Format products with IPFS URLs
+    const formattedProducts = products.map(formatProductWithIpfs);
+    
     // Log results for debugging
     console.log(`Found ${products.length} products with filters:`, filters);
     
-    res.json(products);
+    res.json(formattedProducts);
   } catch (error) {
     console.error('Error fetching products:', error);
     res.status(500).json({ error: 'Error fetching products' });
@@ -99,15 +117,15 @@ router.get('/:id', async (req, res) => {
     if (!product) {
       return res.status(404).json({ error: 'Product not found' });
     }
-    res.json(product);
+    res.json(formatProductWithIpfs(product));
   } catch (error) {
     console.error('Error fetching product:', error);
     res.status(500).json({ error: 'Error fetching product' });
   }
 });
 
-// Create new product - ensure seller is stored
-router.post('/', async (req, res) => {
+// Create new product with image upload to IPFS
+router.post('/', uploadToIpfsMiddleware('image'), async (req, res) => {
   try {
     // Validate required fields
     if (!req.body.name || !req.body.price || !req.body.category || !req.body.seller) {
@@ -119,25 +137,53 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Seller information is required' });
     }
     
+    // Prepare product data
+    const productData = { ...req.body };
+    
+    // If an image was uploaded to IPFS, use the IPFS URL
+    if (req.body.ipfsCid) {
+      productData.ipfsCid = req.body.ipfsCid;
+      productData.imageUrl = getIPFSUrl(req.body.ipfsCid);
+      console.log(`Product image stored on IPFS with CID: ${req.body.ipfsCid}`);
+    } else if (productData.imageUrl && isIPFSAvailable()) {
+      // If an imageUrl was provided but not uploaded via file, try to convert it to IPFS
+      try {
+        const cid = await convertUrlToIPFS(productData.imageUrl);
+        if (cid !== productData.imageUrl) {
+          productData.ipfsCid = cid;
+          productData.imageUrl = getIPFSUrl(cid);
+          console.log(`Converted image URL to IPFS with CID: ${cid}`);
+        }
+      } catch (err) {
+        console.error('Failed to convert image URL to IPFS, using original URL', err);
+      }
+    }
+    
+    // If still no image URL, use a default placeholder
+    if (!productData.imageUrl) {
+      productData.imageUrl = 'https://via.placeholder.com/300?text=No+Image';
+    }
+    
     // Create and save the product
-    const product = new Product(req.body);
+    const product = new Product(productData);
     await product.save();
     
     console.log('Created new product:', {
       name: product.name,
       seller: product.seller,
-      id: product._id
+      id: product._id,
+      ipfsCid: product.ipfsCid || 'None'
     });
     
-    res.status(201).json(product);
+    res.status(201).json(formatProductWithIpfs(product));
   } catch (error) {
     console.error('Error creating product:', error);
     res.status(500).json({ error: 'Error creating product' });
   }
 });
 
-// Update product
-router.patch('/:id', async (req, res) => {
+// Update product with IPFS support
+router.patch('/:id', uploadToIpfsMiddleware('image'), async (req, res) => {
   try {
     // Find the product first
     const product = await Product.findById(req.params.id);
@@ -146,7 +192,7 @@ router.patch('/:id', async (req, res) => {
     }
     
     // Update fields that are provided
-    const updateData = req.body;
+    const updateData = { ...req.body };
     
     // Ensure seller isn't changed to prevent unauthorized reassignment
     if (updateData.seller && product.seller && updateData.seller !== product.seller.toString()) {
@@ -154,6 +200,25 @@ router.patch('/:id', async (req, res) => {
       // You can either reject or keep the original seller
       // For this implementation, we'll keep the original seller
       delete updateData.seller;
+    }
+    
+    // If an image was uploaded to IPFS, use the IPFS URL
+    if (req.body.ipfsCid) {
+      updateData.ipfsCid = req.body.ipfsCid;
+      updateData.imageUrl = getIPFSUrl(req.body.ipfsCid);
+      console.log(`Updated product image stored on IPFS with CID: ${req.body.ipfsCid}`);
+    } else if (updateData.imageUrl && updateData.imageUrl !== product.imageUrl && isIPFSAvailable()) {
+      // If imageUrl was changed but not via file upload, try to convert it to IPFS
+      try {
+        const cid = await convertUrlToIPFS(updateData.imageUrl);
+        if (cid !== updateData.imageUrl) {
+          updateData.ipfsCid = cid;
+          updateData.imageUrl = getIPFSUrl(cid);
+          console.log(`Converted updated image URL to IPFS with CID: ${cid}`);
+        }
+      } catch (err) {
+        console.error('Failed to convert updated image URL to IPFS, using original URL', err);
+      }
     }
     
     // Update the product
@@ -165,10 +230,11 @@ router.patch('/:id', async (req, res) => {
     
     console.log(`Updated product ${updatedProduct._id}:`, {
       name: updatedProduct.name,
-      seller: updatedProduct.seller
+      seller: updatedProduct.seller,
+      ipfsCid: updatedProduct.ipfsCid || 'None'
     });
     
-    res.json(updatedProduct);
+    res.json(formatProductWithIpfs(updatedProduct));
   } catch (error) {
     console.error('Error updating product:', error);
     res.status(500).json({ error: 'Error updating product' });
@@ -202,10 +268,59 @@ router.post('/:id/verify', async (req, res) => {
     product.verified = true;
     product.verifiedAt = new Date();
     await product.save();
-    res.json(product);
+    res.json(formatProductWithIpfs(product));
   } catch (error) {
     console.error('Error verifying product:', error);
     res.status(500).json({ error: 'Error verifying product' });
+  }
+});
+
+// Migrate existing product image to IPFS
+router.post('/:id/migrate-to-ipfs', async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id);
+    if (!product) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    
+    // Check if product already has IPFS CID
+    if (product.ipfsCid) {
+      return res.json({ 
+        message: 'Product image already on IPFS',
+        product: formatProductWithIpfs(product)
+      });
+    }
+    
+    // Check if IPFS is available
+    if (!isIPFSAvailable()) {
+      return res.status(503).json({ error: 'IPFS service not available' });
+    }
+    
+    // Check if product has an image URL
+    if (!product.imageUrl) {
+      return res.status(400).json({ error: 'Product has no image URL to migrate' });
+    }
+    
+    // Convert URL to IPFS
+    const cid = await convertUrlToIPFS(product.imageUrl);
+    if (cid === product.imageUrl) {
+      return res.status(400).json({ error: 'Failed to convert image to IPFS' });
+    }
+    
+    // Update product with IPFS data
+    product.ipfsCid = cid;
+    product.imageUrl = getIPFSUrl(cid);
+    await product.save();
+    
+    console.log(`Migrated product image to IPFS with CID: ${cid}`);
+    
+    res.json({
+      message: 'Product image migrated to IPFS successfully',
+      product: formatProductWithIpfs(product)
+    });
+  } catch (error) {
+    console.error('Error migrating product image to IPFS:', error);
+    res.status(500).json({ error: 'Error migrating product image to IPFS' });
   }
 });
 

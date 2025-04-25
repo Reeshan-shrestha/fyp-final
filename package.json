@@ -8,7 +8,11 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
     "@metamask/detect-provider": "^2.0.0",
+    "@mui/icons-material": "^7.0.2",
+    "@mui/material": "^7.0.2",
     "@openzeppelin/contracts": "^5.2.0",
     "axios": "^1.8.4",
     "bcryptjs": "^3.0.2",
@@ -21,6 +25,7 @@
     "portfinder": "^1.0.35",
     "react": "18.2.0",
     "react-dom": "18.2.0",
+    "recharts": "^2.15.3",
     "web3": "^4.16.0"
   },
   "devDependencies": {

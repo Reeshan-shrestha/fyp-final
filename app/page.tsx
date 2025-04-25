@@ -13,6 +13,8 @@ interface Item {
   description: string;
   image?: string;
   imageUrl?: string;
+  ipfsCid?: string;
+  ipfsUrl?: string;
   seller?: {
     username?: string;
     _id?: string;
@@ -42,6 +44,8 @@ export default function Home() {
           description: item.description,
           image: item.imageUrl || item.image,
           imageUrl: item.imageUrl || item.image,
+          ipfsCid: item.ipfsCid,
+          ipfsUrl: item.ipfsUrl,
           seller: item.seller,
           sellerName: typeof item.seller === 'string' ? item.seller : item.seller?.username || item.sellerName,
           verified: item.verified
@@ -144,6 +148,16 @@ export default function Home() {
                   ) : (
                     <div className="w-full h-full bg-gray-200 flex items-center justify-center">
                       <span className="text-gray-400">No image available</span>
+                    </div>
+                  )}
+                  
+                  {/* Display IPFS Badge if the image is stored on IPFS */}
+                  {item.ipfsCid && (
+                    <div className="absolute bottom-2 right-2 bg-blue-500 text-white text-xs font-bold px-2 py-1 rounded-full flex items-center">
+                      <svg className="w-3 h-3 mr-1" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2L2 19h20L12 2zm0 4l7 11H5l7-11z" />
+                      </svg>
+                      IPFS
                     </div>
                   )}
                 </div>
