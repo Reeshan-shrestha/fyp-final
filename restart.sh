@@ -16,7 +16,7 @@ sleep 2
 
 # Start the backend in a new terminal window
 echo "Starting backend..."
-cd Backend/ChainBazzar-Server/backend
+cd Backend
 npm start &
 
 # Wait for backend to start
@@ -25,7 +25,7 @@ sleep 5
 
 # Start the frontend in a new terminal window
 echo "Starting frontend..."
-cd ../../Frontend/ChainBazzar-Client
+cd ../Frontend
 npm start &
 
 echo "Services started!"
