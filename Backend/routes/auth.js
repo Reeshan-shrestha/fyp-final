@@ -19,7 +19,7 @@ const TOKEN_EXPIRATION = process.env.TOKEN_EXPIRATION || '24h';
 // Register user
 router.post('/register', async (req, res) => {
   try {
-    const { username, email, password, role } = req.body;
+    const { username, email, password, role, walletAddress } = req.body;
     
     console.log(`Registration attempt: ${username}, ${email}, role: ${role || 'not specified'}`);
     
@@ -38,16 +38,17 @@ router.post('/register', async (req, res) => {
     
     // Generate a random wallet address if not provided
     // Ensure it has the correct format with 0x prefix and 40 hex characters
-    const walletAddress = req.body.walletAddress || 
+    const userWalletAddress = walletAddress || 
       '0x' + Array(40).fill(0).map(() => Math.floor(Math.random() * 16).toString(16)).join('');
     
-    console.log("Using wallet address:", walletAddress); // Debug log
+    console.log("Using wallet address:", userWalletAddress); // Debug log
     
     // Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
     
-    // Validate role (only allow user or seller)
+    // Validate role (allow user or seller)
+    // We'll explicitly check for "seller" to make it clear this is allowed
     const validRole = role === 'seller' ? 'seller' : 'user';
     
     // Log if role was provided but changed
@@ -60,52 +61,48 @@ router.post('/register', async (req, res) => {
       username,
       email,
       password: hashedPassword,
-      walletAddress,
+      walletAddress: userWalletAddress,
       role: validRole,  // Set to the validated role
-      isVerified: false
-    });
-    
-    // Log the user object before saving
-    console.log('Creating user with data:', {
-      username: newUser.username,
-      email: newUser.email,
-      role: newUser.role,
-      walletAddress: newUser.walletAddress
+      isVerified: role === 'seller' // Sellers are auto-verified to simplify the process
     });
     
     await newUser.save();
     
-    // Verify user was saved correctly by retrieving from database
-    const savedUser = await User.findOne({ username });
-    console.log('User saved in database with role:', savedUser.role);
-    
-    // Create JWT token
-    const token = jwt.sign(
-      { id: newUser._id, role: newUser.role },
-      JWT_SECRET,
-      { expiresIn: TOKEN_EXPIRATION }
-    );
-    
-    // Return user info without password
-    const userResponse = {
-      _id: newUser._id,
-      username: newUser.username,
-      email: newUser.email,
-      role: newUser.role,
-      isVerified: newUser.isVerified,
-      createdAt: newUser.createdAt
+    // Create and sign a JWT token
+    const payload = {
+      user: {
+        id: newUser.id,
+        username: newUser.username,
+        email: newUser.email,
+        role: newUser.role
+      }
     };
     
-    // Log successful registration with role
-    console.log(`User registered successfully as ${newUser.role}: ${username}`);
-    
-    res.status(201).json({
-      message: 'User registered successfully',
-      token,
-      user: userResponse
-    });
+    jwt.sign(
+      payload,
+      JWT_SECRET,
+      { expiresIn: TOKEN_EXPIRATION },
+      (err, token) => {
+        if (err) throw err;
+        
+        // Log successful registration
+        console.log(`Registration successful: ${username}, ${email}, role: ${newUser.role}`);
+        
+        res.status(201).json({
+          token,
+          user: {
+            id: newUser.id,
+            username: newUser.username,
+            email: newUser.email,
+            role: newUser.role,
+            isAdmin: newUser.role === 'admin',
+            isSeller: newUser.role === 'seller'
+          }
+        });
+      }
+    );
   } catch (error) {
-    console.error('Error registering user:', error);
+    console.error('Registration error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
@@ -113,14 +110,14 @@ router.post('/register', async (req, res) => {
 // Login user
 router.post('/login', async (req, res) => {
   try {
-    const { username, password } = req.body;
-    console.log('Login attempt for username:', username);
+    const { email, password } = req.body;
+    console.log('Login attempt for email:', email);
     
     // Check if user exists
-    const user = await User.findOne({ username });
+    const user = await User.findOne({ email });
     
     if (!user) {
-      console.log('User not found:', username);
+      console.log('User not found:', email);
       return res.status(400).json({ message: 'Invalid credentials' });
     }
     
@@ -128,11 +125,11 @@ router.post('/login', async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password);
     
     if (!isMatch) {
-      console.log('Password mismatch for user:', username);
+      console.log('Password mismatch for user:', email);
       return res.status(400).json({ message: 'Invalid credentials' });
     }
     
-    console.log('Successful login for user:', username);
+    console.log('Successful login for user:', user.username);
     
     // Create JWT token
     const token = jwt.sign(
@@ -194,6 +191,84 @@ router.get('/me', async (req, res) => {
     res.status(200).json(userResponse);
   } catch (error) {
     console.error('Error getting user:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Forgot password endpoint
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    // Check if user exists
+    const user = await User.findOne({ email });
+    
+    if (!user) {
+      // For security reasons, don't reveal that the email doesn't exist
+      return res.status(200).json({ message: 'If your email is registered, you will receive a password reset link' });
+    }
+    
+    // Generate password reset token
+    const resetToken = jwt.sign(
+      { id: user._id },
+      JWT_SECRET,
+      { expiresIn: '1h' } // Token expires in 1 hour
+    );
+    
+    // Save token to user document
+    user.resetPasswordToken = resetToken;
+    user.resetPasswordExpires = Date.now() + 3600000; // 1 hour in milliseconds
+    await user.save();
+    
+    // In a real application, you would send an email with the reset link
+    // For now, we'll just log it to the console
+    console.log(`Password reset token for ${email}: ${resetToken}`);
+    console.log(`Reset URL: http://localhost:3000/reset-password/${resetToken}`);
+    
+    res.status(200).json({ message: 'If your email is registered, you will receive a password reset link' });
+  } catch (error) {
+    console.error('Error in forgot password:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Reset password endpoint
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { token, password } = req.body;
+    
+    // Verify token
+    let decoded;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+    } catch (err) {
+      return res.status(400).json({ message: 'Invalid or expired token' });
+    }
+    
+    // Find user by id and token
+    const user = await User.findOne({
+      _id: decoded.id,
+      resetPasswordToken: token,
+      resetPasswordExpires: { $gt: Date.now() }
+    });
+    
+    if (!user) {
+      return res.status(400).json({ message: 'Invalid or expired token' });
+    }
+    
+    // Hash new password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+    
+    // Update user password and clear reset token
+    user.password = hashedPassword;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+    await user.save();
+    
+    res.status(200).json({ message: 'Password has been reset successfully' });
+  } catch (error) {
+    console.error('Error in reset password:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });

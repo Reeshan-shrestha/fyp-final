@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import AdminActions from './AdminActions';
 import * as apiService from '../services/api';
 import './Admin.css';
 
@@ -8,7 +7,6 @@ function Admin() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [distributionResult, setDistributionResult] = useState(null);
   
   // Check if user is admin
   const isAdmin = user?.isAdmin || user?.role === 'admin';
@@ -33,10 +31,8 @@ function Admin() {
       
       <div className="admin-sections">
         <section className="admin-section">
-          <h2>Product Distribution</h2>
-          <p>Assign unassigned products to sellers in the database. This will ensure products show up on the seller's dashboard.</p>
-          
-          <AdminActions />
+          <h2>Admin Controls</h2>
+          <p>Manage products, users, and other administrative tasks from the admin dashboard.</p>
         </section>
       </div>
     </div>

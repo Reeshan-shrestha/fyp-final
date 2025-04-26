@@ -2,10 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import config from '../config';
 import * as apiService from '../services/api';
-import mockProducts from '../services/mockProducts';
 import { Link } from 'react-router-dom';
 import './AdminDashboard.css';
-import AdminActions from './AdminActions';
 
 function AdminDashboard() {
   const { user } = useAuth();
@@ -57,48 +55,33 @@ function AdminDashboard() {
       setLoading(true);
       setError(null);
       
-      // Try to get products from API with authentication
-      try {
-        const token = localStorage.getItem('chainbazzar_auth_token');
-        const headers = token ? { Authorization: `Bearer ${token}` } : {};
-        
-        // Use the apiService.getProducts method which has mock fallback built in
-        const productsData = await apiService.getProducts();
-        
-        console.log('Products fetched:', productsData);
-        
-        // Map database fields to frontend fields
-        const mappedProducts = productsData.map(product => ({
-          ...product,
-          stock: product.countInStock,
-          isVerified: product.verified
-        }));
-        
-        setProducts(mappedProducts);
-        
-        // Calculate stats using the mapped field names
-        const lowStock = mappedProducts.filter(p => p.stock && p.stock < 5).length;
-        setStats(prev => ({
-          ...prev,
-          totalProducts: mappedProducts.length,
-          lowStockItems: lowStock
-        }));
-      } catch (err) {
-        console.error('Error fetching products from API, using mock data:', err);
-        // Fallback to mock data
-        const mockData = mockProducts;
-        setProducts(mockData);
-        
-        const lowStock = mockData.filter(p => p.stock && p.stock < 5).length;
-        setStats(prev => ({
-          ...prev,
-          totalProducts: mockData.length,
-          lowStockItems: lowStock
-        }));
-      }
+      const token = localStorage.getItem('chainbazzar_auth_token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      
+      // Use the apiService.getProducts method
+      const productsData = await apiService.getProducts();
+      
+      console.log('Products fetched:', productsData);
+      
+      // Map database fields to frontend fields
+      const mappedProducts = productsData.map(product => ({
+        ...product,
+        stock: product.countInStock,
+        isVerified: product.verified
+      }));
+      
+      setProducts(mappedProducts);
+      
+      // Calculate stats using the mapped field names
+      const lowStock = mappedProducts.filter(p => p.stock && p.stock < 5).length;
+      setStats(prev => ({
+        ...prev,
+        totalProducts: mappedProducts.length,
+        lowStockItems: lowStock
+      }));
     } catch (err) {
       console.error('Error in fetchProducts:', err);
-      setError('Failed to load products. Using mock data instead.');
+      setError('Failed to load products. Please try again later.');
     } finally {
       setLoading(false);
     }
@@ -706,12 +689,6 @@ function AdminDashboard() {
           Overview
         </button>
         <button 
-          className={`admin-tab ${activeTab === 'distribution' ? 'active' : ''}`} 
-          onClick={() => handleTabChange('distribution')}
-        >
-          Product Distribution
-        </button>
-        <button 
           className={`admin-tab ${activeTab === 'billing' ? 'active' : ''}`}
           onClick={() => handleTabChange('billing')}
         >
@@ -807,31 +784,6 @@ function AdminDashboard() {
                       ))}
                     </tbody>
                   </table>
-                </div>
-              </div>
-            )}
-            
-            {activeTab === 'distribution' && (
-              <div className="distribution-container">
-                <h2>Product Distribution</h2>
-                <p>Distribute unassigned products to sellers in the system. This operation will randomly assign products to sellers.</p>
-                
-                <AdminActions />
-                
-                <h3>Product Distribution Stats</h3>
-                <div className="distribution-stats">
-                  <div className="stat-panel">
-                    <h4>Total Products</h4>
-                    <p>{stats.totalProducts}</p>
-                  </div>
-                  <div className="stat-panel">
-                    <h4>Assigned Products</h4>
-                    <p>{products.filter(p => p.seller).length}</p>
-                  </div>
-                  <div className="stat-panel">
-                    <h4>Unassigned Products</h4>
-                    <p>{products.filter(p => !p.seller).length}</p>
-                  </div>
                 </div>
               </div>
             )}

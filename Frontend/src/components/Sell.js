@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import config from '../config';
 import * as apiService from '../services/api';
-import mockProducts from '../services/mockProducts';
 import { Link } from 'react-router-dom';
 import './Sell.css';
 
@@ -37,80 +36,36 @@ function Sell() {
       setLoading(true);
       setError(null);
       
-      // Get the current user information
-      const currentUser = user;
-      if (!currentUser || (!currentUser._id && !currentUser.id)) {
-        setError('You must be logged in as a seller to view products');
-        setProducts([]);
+      // Check if user is logged in
+      if (!user?._id) {
+        setError('You must be logged in as a seller to view your products');
         setLoading(false);
         return;
       }
       
-      // Ensure user is a seller
-      if (currentUser.role !== 'seller' && !currentUser.isSeller) {
-        setError('Only seller accounts can access this dashboard');
-        setProducts([]);
+      // Get products for the current seller
+      const token = localStorage.getItem('chainbazzar_auth_token');
+      if (!token) {
+        setError('Authentication token not found. Please log in again.');
         setLoading(false);
         return;
       }
       
-      // Get seller identification
-      const sellerId = currentUser._id || currentUser.id;
-      const sellerUsername = currentUser.username;
-      
-      console.log('Fetching products for seller:', {
-        id: sellerId,
-        username: sellerUsername,
-        role: currentUser.role
+      // Filter products by seller by requesting only seller's products from API
+      const result = await apiService.get(`/api/products?seller=${user.username}`, {
+        headers: { Authorization: `Bearer ${token}` }
       });
       
-      // Get token for authentication
-      const token = localStorage.getItem('chainbazzar_auth_token');
-      const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      
-      try {
-        // Use seller USERNAME to get products - this is critical because the backend
-        // stores the seller as a String that may not match the MongoDB ID
-        // This fixes the issue where no products are found for TechVision
-        const productsData = await apiService.getProducts({ 
-          seller: sellerUsername,  // Use username as primary filter
-          sellerId: sellerId,      // Use ID as secondary filter
-          sellerName: sellerUsername // Use sellerName as additional identifier
-        });
-        
-        console.log(`Retrieved ${productsData.length} products for seller ${sellerUsername}`);
-        
-        // Verify these are truly the seller's products - include both username and ID matching
-        const filteredProducts = productsData.filter(product => {
-          const productSellerId = product.seller?._id || product.seller;
-          const productSellerName = product.sellerName;
-          
-          // Match by ID, username, or sellerName
-          return productSellerId === sellerId || 
-                 productSellerId === sellerUsername || 
-                 productSellerName === sellerUsername;
-        });
-        
-        if (filteredProducts.length !== productsData.length) {
-          console.warn(`Filtering removed ${productsData.length - filteredProducts.length} products that didn't belong to this seller`);
-        }
-        
-        // Map database fields to frontend fields if needed
-        const mappedProducts = filteredProducts.map(product => ({
-          ...product,
-          stock: product.countInStock || product.stock || 0,
-          isVerified: product.verified || product.isVerified || false
-        }));
-        
-        setProducts(mappedProducts);
-      } catch (err) {
-        console.error('Error fetching products:', err);
-        setError('Failed to load products. Please try again later or contact support.');
+      if (result && result.data) {
+        setProducts(result.data);
+      } else {
+        // No mock data as fallback, just set empty array
         setProducts([]);
       }
     } catch (err) {
-      console.error('Error in fetchProducts:', err);
-      setError('Failed to load products. Please try again later.');
+      console.error('Error fetching products:', err);
+      setError(`Failed to fetch products: ${err.message}`);
+      setProducts([]); // Still set empty array in case of error
     } finally {
       setLoading(false);
     }
@@ -192,12 +147,19 @@ function Sell() {
     try {
       setProductActionInProgress(true);
       
-      // Get current seller ID
+      // Get current seller ID and username
       const sellerId = user?._id || user?.id;
       const sellerUsername = user?.username;
       
       if (!sellerId || !sellerUsername) {
         setProductFormError('You must be logged in as a seller to add products');
+        setProductActionInProgress(false);
+        return;
+      }
+      
+      // Check if user is a seller
+      if (user?.role !== 'seller' && !user?.isSeller) {
+        setProductFormError('Only seller accounts can add products');
         setProductActionInProgress(false);
         return;
       }
@@ -208,14 +170,14 @@ function Sell() {
         // Map frontend fields to database fields
         countInStock: parseInt(productForm.stock),
         verified: false, // New products are unverified by default
-        seller: sellerUsername, // Use username instead of ID
+        seller: sellerUsername, // Use username for seller reference
         sellerId: sellerId.toString(), // Store the ID as a reference
         sellerName: sellerUsername // Add seller name for display
       };
       
-      console.log('Adding new product for seller:', sellerId, productData);
+      console.log('Adding new product for seller:', sellerUsername, productData);
       
-      // Try to use the API
+      // Get authentication token
       const token = localStorage.getItem('chainbazzar_auth_token');
       if (!token) {
         setProductFormError('Authentication token not found. Please log in again.');
@@ -224,7 +186,7 @@ function Sell() {
       }
       
       // Use the API to create the product
-      const result = await apiService.createProduct(productData);
+      const result = await apiService.createProduct(productData, token);
       
       if (result && result.data) {
         console.log('Product added successfully:', result.data);

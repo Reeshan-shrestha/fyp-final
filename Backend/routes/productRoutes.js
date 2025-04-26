@@ -168,8 +168,16 @@ router.post('/', uploadToIpfsMiddleware('image'), async (req, res) => {
       return res.status(400).json({ error: 'Seller information is required' });
     }
     
-    // Prepare product data
+    // Prepare product data with appropriate seller fields
     const productData = { ...req.body };
+    
+    // Make sure seller is properly assigned (by username, ID, etc.)
+    // Ensure these fields are present for seller identification
+    if (!productData.sellerId && productData.seller) {
+      console.log(`Creating product with seller: ${productData.seller}`);
+      // If only username is provided, add additional fields
+      productData.sellerName = productData.seller;
+    }
     
     // If an image was uploaded to IPFS, use the IPFS URL
     if (req.body.ipfsCid) {
