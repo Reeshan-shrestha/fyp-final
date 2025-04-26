@@ -33,21 +33,21 @@ export default function Navbar() {
               <Link href="/products" className={`inline-flex items-center px-1 pt-1 border-b-2 ${pathname === '/products' ? 'border-blue-500' : 'border-transparent'} ${isActive('/products')}`}>
                 Products
               </Link>
+              <Link href="/blockchain" className={`inline-flex items-center px-1 pt-1 border-b-2 ${pathname.startsWith('/blockchain') ? 'border-blue-500' : 'border-transparent'} ${isActive('/blockchain')}`}>
+                Blockchain
+              </Link>
               <Link href="/about" className={`inline-flex items-center px-1 pt-1 border-b-2 ${pathname === '/about' ? 'border-blue-500' : 'border-transparent'} ${isActive('/about')}`}>
                 About
               </Link>
-              <Link href="/blockchain" className={`inline-flex items-center px-1 pt-1 border-b-2 ${pathname === '/blockchain' ? 'border-blue-500' : 'border-transparent'} ${isActive('/blockchain')}`}>
-                Blockchain
-              </Link>
             </div>
           </div>
-          <div className="hidden sm:ml-6 sm:flex sm:items-center">
+          <div className="hidden sm:ml-6 sm:flex sm:items-center space-x-4">
             <Link href="/cart" className="p-2 text-gray-600 hover:text-blue-500">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
             </Link>
-            <Link href="/account" className="ml-4 p-2 text-gray-600 hover:text-blue-500">
+            <Link href="/account" className="p-2 text-gray-600 hover:text-blue-500">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
@@ -86,28 +86,38 @@ export default function Navbar() {
               onClick={() => setMobileMenuOpen(false)}>
               Products
             </Link>
+            <Link href="/blockchain" 
+              className={`block pl-3 pr-4 py-2 border-l-4 ${pathname.startsWith('/blockchain') ? 'border-blue-500 bg-blue-50' : 'border-transparent'} text-base font-medium ${isActive('/blockchain')}`}
+              onClick={() => setMobileMenuOpen(false)}>
+              Blockchain
+            </Link>
             <Link href="/about" 
               className={`block pl-3 pr-4 py-2 border-l-4 ${pathname === '/about' ? 'border-blue-500 bg-blue-50' : 'border-transparent'} text-base font-medium ${isActive('/about')}`}
               onClick={() => setMobileMenuOpen(false)}>
               About
             </Link>
-            <Link href="/blockchain" 
-              className={`block pl-3 pr-4 py-2 border-l-4 ${pathname === '/blockchain' ? 'border-blue-500 bg-blue-50' : 'border-transparent'} text-base font-medium ${isActive('/blockchain')}`}
-              onClick={() => setMobileMenuOpen(false)}>
-              Blockchain
-            </Link>
           </div>
           <div className="pt-4 pb-3 border-t border-gray-200">
-            <div className="flex items-center px-4">
-              <div className="flex-shrink-0">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            <div className="flex items-center justify-between px-4">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <div className="text-base font-medium text-gray-800">Your Account</div>
+                </div>
+              </div>
+              <Link
+                href="/cart"
+                className="flex items-center p-2 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-md"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
-              </div>
-              <div className="ml-3">
-                <div className="text-base font-medium text-gray-800">Your Account</div>
-                <div className="text-sm font-medium text-gray-500">Manage your profile</div>
-              </div>
+              </Link>
             </div>
             <div className="mt-3 space-y-1">
               <Link
@@ -115,14 +125,7 @@ export default function Navbar() {
                 className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                Account
-              </Link>
-              <Link
-                href="/cart"
-                className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Cart
+                Account Settings
               </Link>
             </div>
           </div>
