@@ -224,7 +224,12 @@ const BlockchainDashboard = () => {
   };
 
   return (
-    <div className="container mx-auto">
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-3xl font-bold mb-2">Blockchain Activity Dashboard</h1>
+      <p className="text-gray-600 mb-6">
+        Real-time overview of blockchain transactions and activity on ChainBazzar
+      </p>
+
       {/* Network Selector */}
       <div className="mb-6 bg-white rounded-lg shadow p-4">
         <h2 className="text-lg font-semibold mb-3">Network Information</h2>
