@@ -4,6 +4,7 @@ const Product = require('../models/Product');
 const mongoose = require('mongoose');
 const { uploadToIpfsMiddleware } = require('../middleware/ipfsUpload');
 const { getIPFSUrl, convertUrlToIPFS, isIPFSAvailable } = require('../services/ipfsService');
+const blockchainInventoryService = require('../services/blockchainInventoryService');
 
 // Helper to format product with IPFS URLs
 const formatProductWithIpfs = (product) => {
@@ -16,6 +17,24 @@ const formatProductWithIpfs = (product) => {
   }
   
   return formattedProduct;
+};
+
+// After the formatProductWithIpfs helper function, add this helper for blockchain stock
+const getBlockchainStock = async (product) => {
+  if (!product || !product.blockchainManaged) {
+    return null;
+  }
+  
+  try {
+    const stockResult = await blockchainInventoryService.getProductStock(product._id.toString());
+    if (stockResult.success) {
+      return stockResult.stock;
+    }
+  } catch (error) {
+    console.error(`Error fetching blockchain stock for product ${product._id}:`, error);
+  }
+  
+  return null;
 };
 
 // Get all products - with filtering options including seller filter
@@ -117,7 +136,19 @@ router.get('/:id', async (req, res) => {
     if (!product) {
       return res.status(404).json({ error: 'Product not found' });
     }
-    res.json(formatProductWithIpfs(product));
+    
+    const formattedProduct = formatProductWithIpfs(product);
+    
+    // If product is managed on blockchain, fetch the stock from there
+    if (product.blockchainManaged) {
+      const blockchainStock = await getBlockchainStock(product);
+      if (blockchainStock !== null) {
+        formattedProduct.countInStock = blockchainStock;
+        formattedProduct.onChainStock = true;
+      }
+    }
+    
+    res.json(formattedProduct);
   } catch (error) {
     console.error('Error fetching product:', error);
     res.status(500).json({ error: 'Error fetching product' });
@@ -164,6 +195,9 @@ router.post('/', uploadToIpfsMiddleware('image'), async (req, res) => {
       productData.imageUrl = 'https://via.placeholder.com/300?text=No+Image';
     }
     
+    // Check if blockchain inventory should be used
+    const useBlockchain = productData.useBlockchain === 'true' || productData.useBlockchain === true;
+    
     // Create and save the product
     const product = new Product(productData);
     await product.save();
@@ -174,6 +208,40 @@ router.post('/', uploadToIpfsMiddleware('image'), async (req, res) => {
       id: product._id,
       ipfsCid: product.ipfsCid || 'None'
     });
+    
+    // If blockchain inventory is requested, add to blockchain
+    if (useBlockchain && await blockchainInventoryService.isConnected()) {
+      try {
+        const result = await blockchainInventoryService.addProductToBlockchain(
+          product._id.toString(),
+          product.name,
+          product.countInStock || 0
+        );
+        
+        if (result.success) {
+          // Update product with blockchain info
+          product.blockchainManaged = true;
+          product.blockchainTxHash = result.transactionHash;
+          product.blockchainInventoryLastSync = new Date();
+          
+          // Add to stock history
+          product.stockHistory = [{
+            previousStock: 0,
+            newStock: product.countInStock || 0,
+            transactionHash: result.transactionHash,
+            timestamp: new Date()
+          }];
+          
+          await product.save();
+          
+          console.log(`Product ${product._id} added to blockchain inventory`);
+        } else {
+          console.error(`Failed to add product ${product._id} to blockchain:`, result.error);
+        }
+      } catch (error) {
+        console.error(`Error adding product ${product._id} to blockchain:`, error);
+      }
+    }
     
     res.status(201).json(formatProductWithIpfs(product));
   } catch (error) {
@@ -321,6 +389,127 @@ router.post('/:id/migrate-to-ipfs', async (req, res) => {
   } catch (error) {
     console.error('Error migrating product image to IPFS:', error);
     res.status(500).json({ error: 'Error migrating product image to IPFS' });
+  }
+});
+
+// Add this new route to update product stock
+router.patch('/:id/stock', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { stock } = req.body;
+    
+    if (stock === undefined || isNaN(parseInt(stock))) {
+      return res.status(400).json({ error: 'Missing or invalid stock value' });
+    }
+    
+    const product = await Product.findById(id);
+    if (!product) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    
+    const oldStock = product.countInStock;
+    const newStock = parseInt(stock);
+    
+    // If product is managed on blockchain, update there first
+    if (product.blockchainManaged) {
+      const blockchainResult = await blockchainInventoryService.updateProductStock(
+        id,
+        newStock
+      );
+      
+      if (!blockchainResult.success) {
+        return res.status(400).json({
+          error: 'Failed to update stock on blockchain',
+          details: blockchainResult.error
+        });
+      }
+      
+      // Update product with transaction details
+      product.blockchainTxHash = blockchainResult.transactionHash;
+      product.blockchainInventoryLastSync = new Date();
+      
+      // Add to stock history
+      product.stockHistory.push({
+        previousStock: oldStock,
+        newStock,
+        transactionHash: blockchainResult.transactionHash,
+        timestamp: new Date()
+      });
+    }
+    
+    // Update stock in database
+    product.countInStock = newStock;
+    await product.save();
+    
+    res.json({
+      success: true,
+      product: formatProductWithIpfs(product),
+      oldStock,
+      newStock,
+      onChain: product.blockchainManaged
+    });
+  } catch (error) {
+    console.error('Error updating product stock:', error);
+    res.status(500).json({ error: 'Error updating product stock' });
+  }
+});
+
+// Add this new route to enable blockchain inventory for an existing product
+router.post('/:id/enable-blockchain', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const product = await Product.findById(id);
+    if (!product) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    
+    // Don't re-enable if already enabled
+    if (product.blockchainManaged) {
+      return res.json({
+        success: true,
+        product: formatProductWithIpfs(product),
+        message: 'Product already managed on blockchain'
+      });
+    }
+    
+    // Add to blockchain inventory
+    const result = await blockchainInventoryService.addProductToBlockchain(
+      id,
+      product.name,
+      product.countInStock || 0
+    );
+    
+    if (!result.success) {
+      return res.status(400).json({
+        error: 'Failed to add product to blockchain',
+        details: result.error
+      });
+    }
+    
+    // Update product with blockchain info
+    product.blockchainManaged = true;
+    product.blockchainTxHash = result.transactionHash;
+    product.blockchainInventoryLastSync = new Date();
+    
+    // Add to stock history
+    product.stockHistory = [{
+      previousStock: 0,
+      newStock: product.countInStock || 0,
+      transactionHash: result.transactionHash,
+      timestamp: new Date()
+    }];
+    
+    await product.save();
+    
+    res.json({
+      success: true,
+      product: formatProductWithIpfs(product),
+      message: 'Product now managed on blockchain'
+    });
+  } catch (error) {
+    console.error('Error enabling blockchain for product:', error);
+    res.status(500).json({ error: 'Error enabling blockchain for product' });
   }
 });
 

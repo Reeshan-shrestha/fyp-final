@@ -12,6 +12,7 @@ const reviewsRoutes = require('./routes/reviewsRoutes');
 const adminRoutes = require('./routes/admin');
 const supplyChainRoutes = require('./routes/supplyChain');
 const blockchainRoutes = require('./routes/blockchain');
+const inventoryRoutes = require('./routes/inventoryRoutes');
 // Import IPFS service
 const ipfsService = require('./services/ipfsService');
 
@@ -48,6 +49,7 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/supply-chain', supplyChainRoutes);
 app.use('/api/blockchain', blockchainRoutes);
+app.use('/api/inventory', inventoryRoutes);
 
 // Serve static files from the public directory
 app.use('/images', express.static(path.join(__dirname, 'public/images')));

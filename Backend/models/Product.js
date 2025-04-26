@@ -118,6 +118,27 @@ const productSchema = new mongoose.Schema({
   verificationTxHash: {
     type: String
   },
+  // Blockchain inventory management fields
+  blockchainManaged: {
+    type: Boolean,
+    default: false
+  },
+  blockchainTxHash: {
+    type: String
+  },
+  blockchainInventoryLastSync: {
+    type: Date
+  },
+  // Blockchain stock history
+  stockHistory: [{
+    previousStock: Number,
+    newStock: Number,
+    transactionHash: String,
+    timestamp: {
+      type: Date,
+      default: Date.now
+    }
+  }],
   createdAt: {
     type: Date,
     default: Date.now
@@ -130,6 +151,11 @@ const productSchema = new mongoose.Schema({
 productSchema.virtual('ipfsUrl').get(function() {
   if (!this.ipfsCid) return null;
   return `ipfs://${this.ipfsCid}`;
+});
+
+// Add virtual to check if stock is managed on blockchain
+productSchema.virtual('onChainInventory').get(function() {
+  return this.blockchainManaged === true;
 });
 
 // Configure toJSON to include virtuals and remove _id

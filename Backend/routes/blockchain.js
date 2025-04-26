@@ -2,6 +2,46 @@ const express = require('express');
 const router = express.Router();
 const Transaction = require('../models/Transaction');
 const Order = require('../models/Order');
+const blockchainInventoryService = require('../services/blockchainInventoryService');
+
+// Get blockchain status
+router.get('/status', async (req, res) => {
+  try {
+    // Check blockchain connection
+    const isConnected = await blockchainInventoryService.isConnected();
+    
+    // Get additional info if connected
+    let networkId, defaultAccount;
+    if (isConnected) {
+      try {
+        // Get Web3 instance (assuming it's exported by the service)
+        defaultAccount = await blockchainInventoryService.getDefaultAccount();
+        
+        // Return status
+        res.json({
+          connected: true,
+          defaultAccount,
+          timestamp: new Date()
+        });
+      } catch (error) {
+        console.error('Error getting blockchain details:', error);
+        res.json({
+          connected: true,
+          error: 'Could not fetch network details',
+          timestamp: new Date()
+        });
+      }
+    } else {
+      res.json({
+        connected: false,
+        timestamp: new Date()
+      });
+    }
+  } catch (error) {
+    console.error('Error checking blockchain status:', error);
+    res.status(500).json({ error: 'Error checking blockchain status' });
+  }
+});
 
 // Get blockchain statistics
 router.get('/stats', async (req, res) => {

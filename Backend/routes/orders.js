@@ -3,6 +3,49 @@ const router = express.Router();
 const Order = require('../models/Order');
 const Product = require('../models/Product');
 const { auth } = require('../middleware/auth');
+const blockchainInventoryService = require('../services/blockchainInventoryService');
+
+// Add this function to handle blockchain inventory reservation
+const reserveBlockchainInventory = async (product, quantity) => {
+  if (!product.blockchainManaged) {
+    return { success: true, message: 'Product not managed on blockchain' };
+  }
+  
+  try {
+    const result = await blockchainInventoryService.reserveProductStock(
+      product._id.toString(),
+      quantity
+    );
+    
+    if (result.success) {
+      // Update product with the new stock and transaction details
+      const updatedStock = await blockchainInventoryService.getProductStock(product._id.toString());
+      if (updatedStock.success) {
+        product.countInStock = updatedStock.stock;
+        product.blockchainTxHash = result.transactionHash;
+        product.blockchainInventoryLastSync = new Date();
+        
+        // Add to stock history
+        product.stockHistory.push({
+          previousStock: product.countInStock + quantity,
+          newStock: product.countInStock,
+          transactionHash: result.transactionHash,
+          timestamp: new Date()
+        });
+        
+        await product.save();
+      }
+    }
+    
+    return result;
+  } catch (error) {
+    console.error(`Error reserving blockchain inventory for product ${product._id}:`, error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+};
 
 // Create a new order
 router.post('/', auth, async (req, res) => {
@@ -75,6 +118,38 @@ router.post('/', auth, async (req, res) => {
       await Product.findByIdAndUpdate(productId, {
         $inc: { countInStock: -item.quantity }
       });
+    }
+
+    // For each item in the order, check if it's managed on blockchain
+    for (const item of orderItems) {
+      const product = await Product.findById(item.product);
+      
+      if (product && product.blockchainManaged) {
+        // Reserve stock on blockchain
+        const reserveResult = await reserveBlockchainInventory(product, item.quantity);
+        
+        if (!reserveResult.success) {
+          // If reservation failed, abort transaction
+          await session.abortTransaction();
+          session.endSession();
+          
+          return res.status(400).json({
+            error: 'Failed to reserve blockchain inventory',
+            details: reserveResult.error,
+            product: product.name
+          });
+        }
+        
+        // If successful, we've already updated the product in the database
+        // Skip the normal stock update for this product
+        item.blockchainManaged = true;
+        item.blockchainTxHash = reserveResult.transactionHash;
+      } else {
+        // Handle normal inventory update for non-blockchain products
+        // This is your existing code
+        product.countInStock -= item.quantity;
+        await product.save();
+      }
     }
 
     res.status(201).json({
