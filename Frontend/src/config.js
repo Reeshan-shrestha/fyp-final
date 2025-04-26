@@ -71,8 +71,8 @@ const config = {
     USER_KEY: 'chainbazzar_user'
   },
   
-  // Set to true to use mock data if API fails
-  USE_MOCK_API: true
+  // Set to false to ensure real API data is used
+  USE_MOCK_API: false
 };
 
 export default config; 
