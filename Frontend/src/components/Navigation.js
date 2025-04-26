@@ -7,7 +7,6 @@ import HomeIcon from '@mui/icons-material/Home';
 import CategoryIcon from '@mui/icons-material/Category';
 import StorefrontIcon from '@mui/icons-material/Storefront';
 import DashboardIcon from '@mui/icons-material/Dashboard';
-import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import Badge from '@mui/material/Badge';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
@@ -48,7 +47,6 @@ const Navigation = () => {
       icon: <ShoppingCartIcon fontSize="small" />,
       badge: cart.length
     },
-    { path: '/blockchain', label: 'Blockchain', icon: <AccountBalanceWalletIcon fontSize="small" /> },
     ...((user?.role === 'seller' || user?.role === 'admin') ? [
       { path: '/sell', label: 'Sell', icon: <StorefrontIcon fontSize="small" /> }
     ] : []),
