@@ -1,10 +1,13 @@
-const Web3 = require('web3');
+const { Web3 } = require('web3');
 const fs = require('fs');
 const path = require('path');
 const dotenv = require('dotenv');
 
 // Load environment variables
 dotenv.config();
+
+// Check if mock mode is enabled
+const ENABLE_MOCK = process.env.ENABLE_MOCK_BLOCKCHAIN === 'true';
 
 // Contract ABI and address
 // In a production environment, these would be compiled and deployed separately
@@ -13,8 +16,9 @@ const CONTRACT_ADDRESS = process.env.INVENTORY_CONTRACT_ADDRESS || '0x123456789a
 const CONTRACT_ABI_PATH = path.join(__dirname, '../contracts/compiled/InventoryContract.json');
 
 // Initialize Web3
-let web3;
-let inventoryContract;
+let web3 = null;
+let inventoryContract = null;
+let blockchainAvailable = false;
 
 // Read contract ABI
 let contractABI;
@@ -121,10 +125,27 @@ try {
 
 // Initialize the blockchain connection
 const initializeBlockchain = async () => {
+  // If mock mode is enabled, don't try to connect to blockchain
+  if (ENABLE_MOCK) {
+    console.log('Mock blockchain mode enabled. Using mock functions.');
+    blockchainAvailable = false;
+    return false;
+  }
+
   try {
     // Check if web3 provider is specified
     const provider = process.env.WEB3_PROVIDER || 'http://localhost:8545';
+    
+    // Create a new Web3 instance
     web3 = new Web3(provider);
+    
+    // Test if provider is available
+    const isListening = await web3.eth.net.isListening().catch(() => false);
+    if (!isListening) {
+      console.warn('Web3 provider not available. Using fallback mock provider.');
+      blockchainAvailable = false;
+      return false;
+    }
     
     // Create contract instance
     inventoryContract = new web3.eth.Contract(contractABI, CONTRACT_ADDRESS);
@@ -136,10 +157,35 @@ const initializeBlockchain = async () => {
     console.log(`Connected to blockchain network ID: ${networkId}`);
     console.log(`Default account: ${accounts[0]}`);
     
+    blockchainAvailable = true;
     return true;
   } catch (error) {
     console.error('Failed to initialize blockchain connection:', error);
+    blockchainAvailable = false;
     return false;
+  }
+};
+
+// Mock functions to use when blockchain is not available
+const mockBlockchainOperations = {
+  getStock: (productId) => {
+    console.log(`[MOCK] Getting stock for product ${productId}`);
+    return { success: true, stock: 10 }; // Default mock stock
+  },
+  
+  addProduct: (productId, name, stock) => {
+    console.log(`[MOCK] Adding product ${productId} with stock ${stock}`);
+    return { success: true, transactionHash: 'mock_tx_' + Date.now() };
+  },
+  
+  updateStock: (productId, newStock) => {
+    console.log(`[MOCK] Updating stock for product ${productId} to ${newStock}`);
+    return { success: true, transactionHash: 'mock_tx_' + Date.now(), newStock };
+  },
+  
+  reserveStock: (productId, quantity) => {
+    console.log(`[MOCK] Reserving ${quantity} units of product ${productId}`);
+    return { success: true, transactionHash: 'mock_tx_' + Date.now(), quantity };
   }
 };
 
@@ -149,7 +195,7 @@ const isConnected = async () => {
     if (!web3) {
       await initializeBlockchain();
     }
-    return web3.eth.net.isListening();
+    return blockchainAvailable && await web3.eth.net.isListening();
   } catch (error) {
     console.error('Blockchain connection error:', error);
     return false;
@@ -271,11 +317,13 @@ const reserveProductStock = async (productId, quantity) => {
   }
 };
 
-// Get current stock from blockchain
+// Get product stock from blockchain
 const getProductStock = async (productId) => {
   try {
-    if (!web3 || !inventoryContract) {
-      await initializeBlockchain();
+    if (!blockchainAvailable) {
+      if (ENABLE_MOCK || !await initializeBlockchain()) {
+        return mockBlockchainOperations.getStock(productId);
+      }
     }
     
     const stock = await inventoryContract.methods
@@ -296,12 +344,16 @@ const getProductStock = async (productId) => {
   }
 };
 
-// Initialize blockchain on module load
+// Initialize blockchain on module load, but don't block the module export
 initializeBlockchain().then(success => {
   if (success) {
     console.log('Blockchain inventory service initialized successfully');
   } else {
-    console.warn('Blockchain inventory service initialization failed');
+    if (ENABLE_MOCK) {
+      console.log('Running in mock blockchain mode');
+    } else {
+      console.warn('Blockchain inventory service initialization failed. Will use mock functions.');
+    }
   }
 });
 

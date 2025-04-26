@@ -11,38 +11,46 @@ const path = require('path');
 const dotenv = require('dotenv');
 const fetch = require('node-fetch');
 
+// Load environment variables
 dotenv.config();
 
-// Get the IPFS configuration from environment variables
-const INFURA_PROJECT_ID = process.env.INFURA_PROJECT_ID;
-const INFURA_PROJECT_SECRET = process.env.INFURA_PROJECT_SECRET;
-const IPFS_GATEWAY = process.env.IPFS_GATEWAY || 'https://ipfs.io/ipfs/';
+// IPFS configuration
+const IPFS_PROJECT_ID = process.env.IPFS_PROJECT_ID;
+const IPFS_PROJECT_SECRET = process.env.IPFS_PROJECT_SECRET;
+const IPFS_API_URL = process.env.IPFS_API_URL || 'https://ipfs.infura.io:5001';
 
-// Set up authentication for Infura IPFS
-const auth = INFURA_PROJECT_ID && INFURA_PROJECT_SECRET
-  ? 'Basic ' + Buffer.from(INFURA_PROJECT_ID + ':' + INFURA_PROJECT_SECRET).toString('base64')
-  : '';
-
-// Create IPFS client if credentials are available, otherwise initialize as null
+// Flag to track if IPFS is available
+let ipfsAvailable = false;
 let ipfs = null;
 
-try {
-  if (INFURA_PROJECT_ID && INFURA_PROJECT_SECRET) {
+// Initialize IPFS client if credentials are available
+const initializeIpfs = () => {
+  try {
+    if (!IPFS_PROJECT_ID || !IPFS_PROJECT_SECRET) {
+      console.warn('IPFS credentials not found in environment variables. IPFS features will be disabled.');
+      return false;
+    }
+
+    const auth = 'Basic ' + Buffer.from(IPFS_PROJECT_ID + ':' + IPFS_PROJECT_SECRET).toString('base64');
+
     ipfs = create({
-      host: 'ipfs.infura.io',
-      port: 5001,
-      protocol: 'https',
+      host: IPFS_API_URL.replace(/^https?:\/\//, '').split(':')[0],
+      port: IPFS_API_URL.includes(':') ? parseInt(IPFS_API_URL.split(':').pop()) : 5001,
+      protocol: IPFS_API_URL.startsWith('https') ? 'https' : 'http',
       headers: {
-        authorization: auth
-      }
+        authorization: auth,
+      },
     });
+
+    ipfsAvailable = true;
     console.log('IPFS client initialized successfully');
-  } else {
-    console.warn('IPFS credentials not found in environment variables. Some features may be limited.');
+    return true;
+  } catch (error) {
+    console.error('Error initializing IPFS client:', error);
+    ipfsAvailable = false;
+    return false;
   }
-} catch (error) {
-  console.error('Error initializing IPFS client:', error);
-}
+};
 
 /**
  * Upload a file to IPFS
@@ -51,8 +59,9 @@ try {
  * @returns {Promise<string>} - The IPFS CID
  */
 async function uploadToIPFS(fileBuffer, fileName) {
-  if (!ipfs) {
-    throw new Error('IPFS client not initialized. Check your INFURA credentials.');
+  if (!ipfsAvailable && !initializeIpfs()) {
+    console.warn('IPFS not available. Skipping upload.');
+    return null;
   }
 
   try {
@@ -68,7 +77,7 @@ async function uploadToIPFS(fileBuffer, fileName) {
     return cid.toString();
   } catch (error) {
     console.error('Error uploading to IPFS:', error);
-    throw new Error(`Failed to upload to IPFS: ${error.message}`);
+    return null;
   }
 }
 
@@ -98,7 +107,7 @@ function getIPFSUrl(cid) {
   
   // Remove 'ipfs://' prefix if present
   const cleanCid = cid.replace(/^ipfs:\/\//, '');
-  return `${IPFS_GATEWAY}${cleanCid}`;
+  return `${IPFS_API_URL}/${cleanCid}`;
 }
 
 /**
@@ -107,7 +116,9 @@ function getIPFSUrl(cid) {
  * @returns {Promise<string>} - The IPFS CID or original URL if conversion failed
  */
 async function convertUrlToIPFS(url) {
-  if (!url || !ipfs) return url;
+  if (!ipfsAvailable && !initializeIpfs()) {
+    return url; // Return original URL if IPFS is not available
+  }
   
   try {
     // Check if already an IPFS URL
@@ -136,8 +147,14 @@ async function convertUrlToIPFS(url) {
  * @returns {boolean} - Whether IPFS is available
  */
 function isIPFSAvailable() {
-  return !!ipfs;
+  if (!ipfsAvailable) {
+    initializeIpfs();
+  }
+  return ipfsAvailable;
 }
+
+// Initialize IPFS on module load
+initializeIpfs();
 
 module.exports = {
   uploadToIPFS,
