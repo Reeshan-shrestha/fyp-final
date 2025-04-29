@@ -4,7 +4,6 @@ const bodyParser = require('body-parser');
 const authRoutes = require('./routes/auth');
 const productRoutes = require('./routes/productRoutes');
 const billingRoutes = require('./routes/billing');
-const orderRoutes = require('./routes/orders');
 
 // Initialize Express app
 const app = express();
@@ -17,7 +16,6 @@ app.use(bodyParser.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/billing', billingRoutes);
-app.use('/api/orders', orderRoutes);
 
 // Start server
 const PORT = process.env.PORT || 3006;

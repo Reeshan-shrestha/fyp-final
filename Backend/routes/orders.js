@@ -4,7 +4,6 @@ const Order = require('../models/Order');
 const Product = require('../models/Product');
 const { auth } = require('../middleware/auth');
 const blockchainInventoryService = require('../services/blockchainInventoryService');
-const mongoose = require('mongoose');
 
 // Add this function to handle blockchain inventory reservation
 const reserveBlockchainInventory = async (product, quantity) => {
@@ -50,15 +49,12 @@ const reserveBlockchainInventory = async (product, quantity) => {
 
 // Create a new order
 router.post('/', auth, async (req, res) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
-
   try {
-    const { items, totalAmount, shippingAddress, paymentMethod, status, sellerId } = req.body;
+    const { items, totalAmount, shippingAddress, paymentMethod, status } = req.body;
 
     // Validate required fields
-    if (!items || !items.length || !totalAmount || !sellerId) {
-      return res.status(400).json({ message: 'Missing required fields (items, totalAmount, or sellerId)' });
+    if (!items || !items.length || !totalAmount) {
+      return res.status(400).json({ message: 'Missing required fields' });
     }
 
     // Set default values if missing
@@ -79,29 +75,16 @@ router.post('/', auth, async (req, res) => {
       const productId = item.product || item.productId;
       
       if (!productId) {
-        await session.abortTransaction();
-        session.endSession();
         return res.status(400).json({ message: 'Invalid product reference in order items' });
       }
 
       const product = await Product.findById(productId);
       if (!product) {
-        await session.abortTransaction();
-        session.endSession();
         return res.status(404).json({ message: `Product ${productId} not found` });
-      }
-
-      // Verify product belongs to the specified seller
-      if (product.sellerId.toString() !== sellerId) {
-        await session.abortTransaction();
-        session.endSession();
-        return res.status(400).json({ message: `Product ${product.name} does not belong to the specified seller` });
       }
 
       // Validate stock availability
       if (product.countInStock < item.quantity) {
-        await session.abortTransaction();
-        session.endSession();
         return res.status(400).json({ message: `Insufficient stock for ${product.name}` });
       }
 
@@ -115,7 +98,6 @@ router.post('/', auth, async (req, res) => {
     // Create order
     const order = new Order({
       user: req.user.id,
-      sellerId: sellerId,
       items: orderItems,
       totalAmount,
       shippingAddress: orderShippingAddress,
@@ -128,16 +110,14 @@ router.post('/', auth, async (req, res) => {
       }]
     });
 
-    const createdOrder = await order.save({ session });
+    const createdOrder = await order.save();
 
     // Update product stock
     for (const item of items) {
       const productId = item.product || item.productId;
-      await Product.findByIdAndUpdate(
-        productId,
-        { $inc: { countInStock: -item.quantity } },
-        { session }
-      );
+      await Product.findByIdAndUpdate(productId, {
+        $inc: { countInStock: -item.quantity }
+      });
     }
 
     // For each item in the order, check if it's managed on blockchain
@@ -149,6 +129,7 @@ router.post('/', auth, async (req, res) => {
         const reserveResult = await reserveBlockchainInventory(product, item.quantity);
         
         if (!reserveResult.success) {
+          // If reservation failed, abort transaction
           await session.abortTransaction();
           session.endSession();
           
@@ -159,21 +140,23 @@ router.post('/', auth, async (req, res) => {
           });
         }
         
+        // If successful, we've already updated the product in the database
+        // Skip the normal stock update for this product
         item.blockchainManaged = true;
         item.blockchainTxHash = reserveResult.transactionHash;
+      } else {
+        // Handle normal inventory update for non-blockchain products
+        // This is your existing code
+        product.countInStock -= item.quantity;
+        await product.save();
       }
     }
-
-    await session.commitTransaction();
-    session.endSession();
 
     res.status(201).json({
       message: 'Order created successfully',
       order: createdOrder
     });
   } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
     console.error('Error creating order:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }

@@ -16,42 +16,16 @@ export const createOrder = async (orderData) => {
   try {
     const baseUrl = getBaseUrl();
     const token = localStorage.getItem('chainbazzar_auth_token');
-    
-    if (!token) {
-      throw new Error('Authentication token not found. Please log in again.');
-    }
-
     const config = {
       headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
+        'Authorization': `Bearer ${token}`
       }
     };
-
-    // Ensure we're using the correct API endpoint
     const response = await axios.post(`${baseUrl}/api/orders`, orderData, config);
-    
-    if (!response.data?.order) {
-      throw new Error('Invalid response format from server');
-    }
-    
     return response.data;
   } catch (error) {
-    if (error.response) {
-      // The request was made and the server responded with a status code
-      // that falls out of the range of 2xx
-      const errorMessage = error.response.data.message || 'Server error occurred';
-      console.error('Order creation failed:', errorMessage);
-      throw new Error(errorMessage);
-    } else if (error.request) {
-      // The request was made but no response was received
-      console.error('No response received from server');
-      throw new Error('No response received from server. Please try again.');
-    } else {
-      // Something happened in setting up the request that triggered an Error
-      console.error('Error setting up request:', error.message);
-      throw new Error(error.message || 'Failed to create order');
-    }
+    console.error('Error creating order:', error);
+    throw error;
   }
 };
 
@@ -139,7 +113,13 @@ export const getSupplyChainEvents = async (productId) => {
 export const createBill = async (billData) => {
   try {
     const baseUrl = getBaseUrl();
-    const response = await axios.post(`${baseUrl}/api/bills`, billData);
+    const token = localStorage.getItem('chainbazzar_auth_token');
+    const config = {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    };
+    const response = await axios.post(`${baseUrl}/api/billing/bills`, billData, config);
     return response.data;
   } catch (error) {
     console.error('Error creating bill:', error);
