@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import config from '../config';
 import * as apiService from '../services/api';
-import axios from 'axios';
 import { Link } from 'react-router-dom';
 import './Sell.css';
 
@@ -27,9 +26,6 @@ function Sell() {
   const [productFormError, setProductFormError] = useState(null);
   const [productActionSuccess, setProductActionSuccess] = useState(null);
   const [productActionInProgress, setProductActionInProgress] = useState(false);
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [imagePreview, setImagePreview] = useState(null);
-  const fileInputRef = useRef(null);
 
   useEffect(() => {
     fetchProducts();
@@ -56,15 +52,14 @@ function Sell() {
       }
       
       // Filter products by seller by requesting only seller's products from API
-      const baseUrl = config.API_BASE_URL;
-      const response = await apiService.get(`${baseUrl}/api/products?seller=${user.username}`, {
+      const result = await apiService.get(`/api/products?seller=${user.username}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
-      if (response && response.data) {
-        console.log('Seller products retrieved:', response.data);
-        setProducts(response.data);
+      if (result && result.data) {
+        setProducts(result.data);
       } else {
+        // No mock data as fallback, just set empty array
         setProducts([]);
       }
     } catch (err) {
@@ -121,33 +116,6 @@ function Sell() {
     }));
   };
 
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
-    const maxSize = 5 * 1024 * 1024; // 5MB
-    
-    if (!allowedTypes.includes(file.type)) {
-      setProductFormError('Only JPEG, PNG, and GIF images are allowed');
-      return;
-    }
-    
-    if (file.size > maxSize) {
-      setProductFormError('File size must be less than 5MB');
-      return;
-    }
-    
-    setSelectedFile(file);
-    
-    // Create preview
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setImagePreview(reader.result);
-    };
-    reader.readAsDataURL(file);
-  };
-
   const validateProductForm = () => {
     if (!productForm.name.trim()) {
       setProductFormError('Product name is required');
@@ -161,14 +129,6 @@ function Sell() {
       setProductFormError('Category is required');
       return false;
     }
-    
-    // Validate category is one of the allowed values
-    const validCategories = ['electronics', 'clothing', 'food', 'other'];
-    if (!validCategories.includes(productForm.category.toLowerCase())) {
-      setProductFormError(`Category must be one of: ${validCategories.join(', ')}`);
-      return false;
-    }
-    
     if (!productForm.stock || isNaN(productForm.stock) || parseInt(productForm.stock) < 0) {
       setProductFormError('Valid stock quantity is required');
       return false;
@@ -204,26 +164,18 @@ function Sell() {
         return;
       }
       
-      // Create form data for file upload
-      const formData = new FormData();
-      formData.append('name', productForm.name);
-      formData.append('description', productForm.description || '');
-      formData.append('price', productForm.price);
-      formData.append('category', productForm.category.toLowerCase());
-      formData.append('countInStock', productForm.stock);
-      formData.append('seller', sellerUsername);
-      formData.append('sellerId', sellerId.toString());
-      formData.append('sellerName', sellerUsername);
+      const productData = {
+        ...productForm,
+        price: parseFloat(productForm.price),
+        // Map frontend fields to database fields
+        countInStock: parseInt(productForm.stock),
+        verified: false, // New products are unverified by default
+        seller: sellerUsername, // Use username for seller reference
+        sellerId: sellerId.toString(), // Store the ID as a reference
+        sellerName: sellerUsername // Add seller name for display
+      };
       
-      // If there's a selected file, add it to form data
-      if (selectedFile) {
-        formData.append('image', selectedFile);
-      } else if (productForm.imageUrl) {
-        // If no file but imageUrl is provided
-        formData.append('imageUrl', productForm.imageUrl);
-      }
-      
-      console.log('Adding new product for seller:', sellerUsername);
+      console.log('Adding new product for seller:', sellerUsername, productData);
       
       // Get authentication token
       const token = localStorage.getItem('chainbazzar_auth_token');
@@ -234,20 +186,10 @@ function Sell() {
       }
       
       // Use the API to create the product
-      const baseUrl = config.API_BASE_URL;
-      const response = await apiService.post(
-        `${baseUrl}/api/products`,
-        formData,
-        { 
-          headers: { 
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'multipart/form-data'
-          } 
-        }
-      );
+      const result = await apiService.createProduct(productData, token);
       
-      if (response && response.data) {
-        console.log('Product added successfully:', response.data);
+      if (result && result.data) {
+        console.log('Product added successfully:', result.data);
         setProductActionSuccess('Product added successfully');
         closeProductModal();
         fetchProducts(); // Refresh the list
@@ -560,20 +502,14 @@ function Sell() {
                 
                 <div className="form-group">
                   <label htmlFor="category">Category*</label>
-                  <select
+                  <input
+                    type="text"
                     id="category"
                     name="category"
                     value={productForm.category}
                     onChange={handleProductFormChange}
                     required
-                    className="form-select"
-                  >
-                    <option value="" disabled>Select a category</option>
-                    <option value="electronics">Electronics</option>
-                    <option value="clothing">Clothing</option>
-                    <option value="food">Food</option>
-                    <option value="other">Other</option>
-                  </select>
+                  />
                 </div>
               </div>
               
@@ -592,46 +528,15 @@ function Sell() {
                 </div>
                 
                 <div className="form-group">
-                  <label htmlFor="imageUpload">Product Image</label>
-                  <div className="image-upload-container">
-                    {imagePreview && (
-                      <div className="image-preview">
-                        <img src={imagePreview} alt="Preview" />
-                      </div>
-                    )}
-                    <input
-                      type="file"
-                      id="imageUpload"
-                      ref={fileInputRef}
-                      onChange={handleFileChange}
-                      accept="image/jpeg, image/png, image/gif"
-                      className="file-input"
-                    />
-                    <button 
-                      type="button" 
-                      className="btn-secondary"
-                      onClick={() => fileInputRef.current.click()}
-                    >
-                      Choose File
-                    </button>
-                    <span className="file-name">
-                      {selectedFile ? selectedFile.name : 'No file chosen'}
-                    </span>
-                  </div>
-                  <p className="form-hint">Max size: 5MB. Allowed types: JPEG, PNG, GIF</p>
+                  <label htmlFor="imageUrl">Image URL</label>
+                  <input
+                    type="text"
+                    id="imageUrl"
+                    name="imageUrl"
+                    value={productForm.imageUrl}
+                    onChange={handleProductFormChange}
+                  />
                 </div>
-              </div>
-              
-              <div className="form-group">
-                <label htmlFor="imageUrl">Or Image URL</label>
-                <input
-                  type="text"
-                  id="imageUrl"
-                  name="imageUrl"
-                  value={productForm.imageUrl}
-                  onChange={handleProductFormChange}
-                  placeholder="Enter image URL if not uploading a file"
-                />
               </div>
               
               <div className="form-actions">

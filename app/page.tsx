@@ -32,12 +32,7 @@ export default function Home() {
   useEffect(() => {
     const fetchItems = async () => {
       try {
-        setLoading(true);
-        // Use consistent API URL
-        const API_URL = 'http://localhost:3006';
-        const response = await axios.get(`${API_URL}/api/products`);
-        
-        console.log('Products loaded:', response.data);
+        const response = await axios.get('http://localhost:3006/api/products');
         
         // Process the items to standardize the data structure
         const processedItems = response.data.map((item: any) => ({
@@ -45,22 +40,21 @@ export default function Home() {
           _id: item._id || item.id,
           name: item.name,
           price: item.price,
-          stock: item.countInStock || item.stock || 0,
-          description: item.description || 'No description available',
+          stock: item.stock || 10, // Default stock if not provided
+          description: item.description,
           image: item.imageUrl || item.image,
           imageUrl: item.imageUrl || item.image,
           ipfsCid: item.ipfsCid,
           ipfsUrl: item.ipfsUrl,
           seller: item.seller,
-          sellerName: item.sellerName || (typeof item.seller === 'string' ? item.seller : item.seller?.username),
-          category: item.category || 'other',
+          sellerName: typeof item.seller === 'string' ? item.seller : item.seller?.username || item.sellerName,
           verified: item.verified
         }));
         
         setItems(processedItems);
-      } catch (err: any) {
+      } catch (err) {
+        setError('Failed to load products');
         console.error('Error loading products:', err);
-        setError(err.message || 'Failed to load products');
       } finally {
         setLoading(false);
       }
