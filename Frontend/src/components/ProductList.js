@@ -6,7 +6,6 @@ import config from '../config';
 import './ProductList.css';
 import SupplyChainTracker from '../components/SupplyChainTracker';
 import ProductReviews from '../components/ProductReviews';
-import { CardMedia } from '@mui/material';
 
 const ProductList = () => {
   const navigate = useNavigate();
@@ -116,28 +115,11 @@ const ProductList = () => {
             >
               <div className="product-image-container">
                 <Link to={`/product/${productId}`}>
-                  <CardMedia
-                    component="img"
-                    height="300"
-                    image={product.imageUrl || product.image}
+                  <img 
+                    src={getImageSource(product)} 
                     alt={product.name}
-                    onError={(e) => {
-                      console.log(`Image failed to load for product ${product._id}, using fallback`);
-                      // Try using a different placeholder service first
-                      const fallbackUrl = `https://placehold.co/300x300/e0e0e0/808080?text=${encodeURIComponent('No Image')}`;
-                      
-                      if (e.target.src !== fallbackUrl) {
-                        e.target.src = fallbackUrl;
-                      } else {
-                        // If the placeholder service also fails, use a data URI
-                        e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iI2UwZTBlMCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMjAiIGZpbGw9IiM4MDgwODAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5ObyBJbWFnZTwvdGV4dD48L3N2Zz4=';
-                      }
-                    }}
-                    sx={{
-                      objectFit: 'contain',
-                      bgcolor: 'background.paper',
-                      p: 1
-                    }}
+                    className="product-image"
+                    onError={() => handleImageError(productId)}
                   />
                   {product.verified && (
                     <div className="verified-badge">
