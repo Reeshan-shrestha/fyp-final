@@ -40,7 +40,10 @@ const getBlockchainStock = async (product) => {
 // Get all products - with filtering options including seller filter
 router.get('/', async (req, res) => {
   try {
-    const filters = {};
+    const filters = {
+      // Only return active products by default
+      status: 'active'
+    };
     
     // Process filter parameters
     if (req.query.category && req.query.category !== 'all') {
@@ -49,6 +52,11 @@ router.get('/', async (req, res) => {
     
     if (req.query.verifiedOnly === 'true') {
       filters.verified = true;
+    }
+    
+    // Allow overriding status filter if explicitly requested
+    if (req.query.status) {
+      filters.status = req.query.status;
     }
     
     // Seller filtering - this is important for showing only one seller's products
