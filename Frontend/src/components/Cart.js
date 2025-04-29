@@ -62,14 +62,28 @@ const Cart = () => {
 
     // Validate stock availability before proceeding
     try {
+      setIsProcessing(true);
+      setSnackbar({
+        open: true,
+        message: 'Processing your order...',
+        severity: 'info'
+      });
+
       // Check current stock for all items
       const stockCheckPromises = cart.map(async (item) => {
-        const currentProduct = await apiService.getProduct(item._id);
-        return {
-          product: currentProduct,
-          cartItem: item,
-          hasEnoughStock: currentProduct.countInStock >= item.quantity
-        };
+        try {
+          const currentProduct = await apiService.getProduct(item._id);
+          return {
+            product: currentProduct,
+            cartItem: item,
+            hasEnoughStock: currentProduct.countInStock >= item.quantity,
+            seller: currentProduct.seller,
+            sellerId: currentProduct.sellerId
+          };
+        } catch (error) {
+          console.error(`Error checking stock for product ${item._id}:`, error);
+          throw new Error(`Failed to validate stock for ${item.name}`);
+        }
       });
       
       const stockResults = await Promise.all(stockCheckPromises);
@@ -84,26 +98,9 @@ const Cart = () => {
           message: `Some items have insufficient stock: ${insufficientStockItems.map(item => item.product.name).join(', ')}`,
           severity: 'error'
         });
+        setIsProcessing(false);
         return;
       }
-    } catch (error) {
-      console.error('Error checking stock:', error);
-      setSnackbar({
-        open: true,
-        message: 'Failed to validate stock. Please try again.',
-        severity: 'error'
-      });
-      return;
-    }
-
-    try {
-      // Set loading state
-      setIsProcessing(true);
-      setSnackbar({
-        open: true,
-        message: 'Processing your order...',
-        severity: 'info'
-      });
 
       // Calculate totals
       const subtotal = cart.reduce((total, item) => total + (item.price * item.quantity), 0);
@@ -115,73 +112,99 @@ const Cart = () => {
       const formattedTax = tax.toFixed(2);
       const formattedTotal = total.toFixed(2);
 
-      // Create order and bill data
-      const orderData = {
-        items: cart.map(item => ({
-          productId: item._id,
-          name: item.name,
-          quantity: item.quantity,
-          price: item.price
-        })),
-        subtotal: parseFloat(formattedSubtotal),
-        tax: parseFloat(formattedTax),
-        totalAmount: parseFloat(formattedTotal),
-        shippingAddress: {
-          street: '123 Demo Street',
-          city: 'Test City',
-          state: 'TS',
-          zipCode: '12345',
-          country: 'Test Country'
-        },
-        paymentMethod: 'credit_card',
-        status: 'pending',
-        userId: user?._id,
-        email: user?.email,
-        date: new Date().toISOString()
-      };
+      // Group items by seller
+      const itemsBySeller = stockResults.reduce((acc, { product, cartItem }) => {
+        const sellerId = product.sellerId || product.seller;
+        if (!acc[sellerId]) {
+          acc[sellerId] = [];
+        }
+        acc[sellerId].push({
+          productId: cartItem._id,
+          name: cartItem.name,
+          quantity: cartItem.quantity,
+          price: cartItem.price,
+          seller: product.seller,
+          sellerId: product.sellerId
+        });
+        return acc;
+      }, {});
 
-      console.log('Sending order data:', orderData);
+      // Create orders for each seller
+      const orderPromises = Object.entries(itemsBySeller).map(async ([sellerId, items]) => {
+        const sellerSubtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        const sellerTax = sellerSubtotal * 0.1;
+        const sellerTotal = sellerSubtotal + sellerTax;
 
-      // Create order using apiService
-      const orderResponse = await apiService.createOrder(orderData);
-      console.log('Order created successfully:', orderResponse);
-      
-      // Create bill record
-      const billData = {
-        orderId: orderResponse.data._id,
-        userId: user?._id,
-        items: cart.map(item => ({
-          productId: item._id,
-          name: item.name,
-          quantity: item.quantity,
-          price: item.price,
-          subtotal: (item.price * item.quantity)
-        })),
-        subtotal: parseFloat(formattedSubtotal),
-        tax: parseFloat(formattedTax),
-        total: parseFloat(formattedTotal),
-        date: orderData.date,
-        status: 'completed',
-        shipping: orderData.shippingAddress
-      };
-      
-      // Save bill to database
-      const billResponse = await apiService.createBill(billData);
-      console.log('Bill created successfully:', billResponse);
+        const orderData = {
+          items,
+          subtotal: parseFloat(sellerSubtotal.toFixed(2)),
+          tax: parseFloat(sellerTax.toFixed(2)),
+          totalAmount: parseFloat(sellerTotal.toFixed(2)),
+          shippingAddress: {
+            street: '123 Demo Street',
+            city: 'Test City',
+            state: 'TS',
+            zipCode: '12345',
+            country: 'Test Country'
+          },
+          paymentMethod: 'credit_card',
+          status: 'pending',
+          userId: user._id,
+          email: user.email,
+          sellerId,
+          date: new Date().toISOString()
+        };
+
+        try {
+          // Create order using apiService
+          const orderResponse = await apiService.createOrder(orderData);
+          console.log(`Order created for seller ${sellerId}:`, orderResponse);
+          
+          // Check if the response has the expected structure
+          if (!orderResponse?.order?._id) {
+            throw new Error('Invalid order response: Missing order ID');
+          }
+          
+          // Create bill record
+          const billData = {
+            orderId: orderResponse.order._id,
+            userId: user._id,
+            items,
+            subtotal: parseFloat(sellerSubtotal.toFixed(2)),
+            tax: parseFloat(sellerTax.toFixed(2)),
+            total: parseFloat(sellerTotal.toFixed(2)),
+            date: orderData.date,
+            status: 'completed',
+            shipping: orderData.shippingAddress,
+            sellerId,
+            paymentMethod: orderData.paymentMethod
+          };
+          
+          const billResponse = await apiService.createBill(billData);
+          console.log(`Bill created for seller ${sellerId}:`, billResponse);
+
+          return { order: orderResponse.order, bill: billResponse.data };
+        } catch (error) {
+          console.error(`Error creating order for seller ${sellerId}:`, error);
+          throw error;
+        }
+      });
+
+      const results = await Promise.all(orderPromises);
 
       // Clear cart and show success message
       clearCart();
       setSnackbar({
         open: true,
-        message: 'Order placed successfully!',
+        message: 'Orders placed successfully!',
         severity: 'success'
       });
       
-      // Navigate to thank you page
+      // Navigate to thank you page with all order information
       navigate('/thank-you', { 
         state: { 
-          order: orderResponse.data,
-          bill: billResponse.data,
+          orders: results.map(r => r.order),
+          bills: results.map(r => r.bill),
           orderDate: new Date().toLocaleDateString()
         }
       });
@@ -322,7 +345,11 @@ const Cart = () => {
                         className="cart-item-image"
                         sx={{ height: '120px', objectFit: 'contain', bgcolor: 'grey.100', p: 1 }}
                         onError={(e) => {
-                          e.target.src = 'https://via.placeholder.com/150x150?text=No+Image';
+                          // Create a data URI for a simple SVG placeholder
+                          const svgPlaceholder = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="150" height="150" viewBox="0 0 150 150"><rect width="150" height="150" fill="%23f0f0f0"/><text x="50%" y="50%" font-family="Arial" font-size="14" fill="%23999" text-anchor="middle" dy=".3em">No Image</text></svg>`;
+                          
+                          // Set the fallback image
+                          e.target.src = svgPlaceholder;
                         }}
                       />
                     </Grid>

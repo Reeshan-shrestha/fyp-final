@@ -15,7 +15,13 @@ const getBaseUrl = () => {
 export const createOrder = async (orderData) => {
   try {
     const baseUrl = getBaseUrl();
-    const response = await axios.post(`${baseUrl}/api/orders`, orderData);
+    const token = localStorage.getItem('chainbazzar_auth_token');
+    const config = {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    };
+    const response = await axios.post(`${baseUrl}/api/orders`, orderData, config);
     return response.data;
   } catch (error) {
     console.error('Error creating order:', error);
@@ -107,7 +113,13 @@ export const getSupplyChainEvents = async (productId) => {
 export const createBill = async (billData) => {
   try {
     const baseUrl = getBaseUrl();
-    const response = await axios.post(`${baseUrl}/api/bills`, billData);
+    const token = localStorage.getItem('chainbazzar_auth_token');
+    const config = {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    };
+    const response = await axios.post(`${baseUrl}/api/billing/bills`, billData, config);
     return response.data;
   } catch (error) {
     console.error('Error creating bill:', error);
