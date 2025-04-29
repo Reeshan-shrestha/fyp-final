@@ -55,25 +55,15 @@ function Sell() {
         return;
       }
       
-      // Filter products by seller ID and username
+      // Filter products by seller by requesting only seller's products from API
       const baseUrl = config.API_BASE_URL;
-      const response = await apiService.get(`${baseUrl}/api/products`, {
-        headers: { Authorization: `Bearer ${token}` },
-        params: {
-          sellerId: user._id,
-          seller: user.username
-        }
+      const response = await apiService.get(`${baseUrl}/api/products?seller=${user.username}`, {
+        headers: { Authorization: `Bearer ${token}` }
       });
       
       if (response && response.data) {
-        // Filter out products that don't match the seller
-        const filteredProducts = response.data.filter(product => 
-          product.sellerId === user._id || 
-          product.seller === user.username
-        );
-        
-        console.log('Seller products retrieved:', filteredProducts);
-        setProducts(filteredProducts);
+        console.log('Seller products retrieved:', response.data);
+        setProducts(response.data);
       } else {
         setProducts([]);
       }

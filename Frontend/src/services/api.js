@@ -15,6 +15,7 @@ const getBaseUrl = () => {
 export const createOrder = async (orderData) => {
   try {
     const baseUrl = getBaseUrl();
+<<<<<<< HEAD
     const token = localStorage.getItem('chainbazzar_auth_token');
     
     if (!token) {
@@ -35,6 +36,9 @@ export const createOrder = async (orderData) => {
       throw new Error('Invalid response format from server');
     }
     
+=======
+    const response = await axios.post(`${baseUrl}/api/orders`, orderData);
+>>>>>>> parent of be8f191 (fixxes)
     return response.data;
   } catch (error) {
     if (error.response) {
