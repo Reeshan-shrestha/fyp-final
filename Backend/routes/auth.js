@@ -110,7 +110,6 @@ router.post('/login', async (req, res) => {
     console.log(`Login attempt for identifier: ${loginIdentifier}`);
     
     if (!loginIdentifier || !password) {
-      console.log('Missing credentials:', { loginIdentifier, password: !!password });
       return res.status(400).json({ message: 'Username/email and password are required' });
     }
     
@@ -127,12 +126,6 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
     
-    console.log('Found user:', {
-      username: user.username,
-      email: user.email,
-      role: user.role
-    });
-    
     // Check password
     const isMatch = await bcrypt.compare(password, user.password);
     
@@ -141,9 +134,9 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
     
-    console.log('Password match, creating token for user:', user.username);
+    console.log('Successful login for user:', user.username);
     
-    // Create JWT token
+    // Create JWT token with consistent format, including the username for profile retrieval
     const token = jwt.sign(
       { 
         id: user._id,
@@ -159,13 +152,11 @@ router.post('/login', async (req, res) => {
       username: user.username,
       email: user.email,
       role: user.role,
-      isAdmin: user.role === 'admin',
-      isSeller: user.role === 'seller',
+      isAdmin: user.role === 'admin', // Add isAdmin flag for frontend
+      isSeller: user.role === 'seller', // Add isSeller flag for frontend
       isVerified: user.isVerified,
       createdAt: user.createdAt
     };
-    
-    console.log('Login successful for user:', user.username);
     
     res.status(200).json({
       message: 'Login successful',
@@ -174,7 +165,7 @@ router.post('/login', async (req, res) => {
     });
   } catch (error) {
     console.error('Error logging in:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
