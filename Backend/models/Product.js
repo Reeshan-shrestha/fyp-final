@@ -69,12 +69,6 @@ const productSchema = new mongoose.Schema({
     required: true,
     min: 0
   },
-  status: {
-    type: String,
-    required: true,
-    enum: ['active', 'inactive'],
-    default: 'active'
-  },
   category: {
     type: String,
     required: true,

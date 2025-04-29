@@ -4,7 +4,6 @@ const Order = require('../models/Order');
 const Product = require('../models/Product');
 const { auth } = require('../middleware/auth');
 const blockchainInventoryService = require('../services/blockchainInventoryService');
-const mongoose = require('mongoose');
 
 // Add this function to handle blockchain inventory reservation
 const reserveBlockchainInventory = async (product, quantity) => {
@@ -113,6 +112,14 @@ router.post('/', auth, async (req, res) => {
 
     const createdOrder = await order.save();
 
+    // Update product stock
+    for (const item of items) {
+      const productId = item.product || item.productId;
+      await Product.findByIdAndUpdate(productId, {
+        $inc: { countInStock: -item.quantity }
+      });
+    }
+
     // For each item in the order, check if it's managed on blockchain
     for (const item of orderItems) {
       const product = await Product.findById(item.product);
@@ -122,8 +129,9 @@ router.post('/', auth, async (req, res) => {
         const reserveResult = await reserveBlockchainInventory(product, item.quantity);
         
         if (!reserveResult.success) {
-          // If reservation failed, try to delete the order
-          await Order.findByIdAndDelete(createdOrder._id);
+          // If reservation failed, abort transaction
+          await session.abortTransaction();
+          session.endSession();
           
           return res.status(400).json({
             error: 'Failed to reserve blockchain inventory',
@@ -132,29 +140,13 @@ router.post('/', auth, async (req, res) => {
           });
         }
         
-        // If successful, update the product with blockchain info
-        product.blockchainTxHash = reserveResult.transactionHash;
-        product.blockchainInventoryLastSync = new Date();
-        product.countInStock -= item.quantity;
-        
-        // Add to stock history
-        if (!product.stockHistory) {
-          product.stockHistory = [];
-        }
-        product.stockHistory.push({
-          previousStock: product.countInStock + item.quantity,
-          newStock: product.countInStock,
-          transactionHash: reserveResult.transactionHash,
-          timestamp: new Date()
-        });
-        
-        await product.save();
-        
-        // Add blockchain info to order item
+        // If successful, we've already updated the product in the database
+        // Skip the normal stock update for this product
         item.blockchainManaged = true;
         item.blockchainTxHash = reserveResult.transactionHash;
       } else {
         // Handle normal inventory update for non-blockchain products
+        // This is your existing code
         product.countInStock -= item.quantity;
         await product.save();
       }
