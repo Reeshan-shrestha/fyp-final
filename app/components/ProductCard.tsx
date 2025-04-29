@@ -1,8 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useCart } from '../hooks/useCart';
+import Link from 'next/link';
 
 interface ProductProps {
   id: string;
@@ -18,12 +17,6 @@ interface ProductProps {
   stock?: number;
 }
 
-// Helper function to truncate description
-const truncateDescription = (text: string, maxLength: number = 60) => {
-  if (text.length <= maxLength) return text;
-  return text.substring(0, maxLength).trim() + '...';
-};
-
 export default function ProductCard({ 
   id, 
   name, 
@@ -38,82 +31,84 @@ export default function ProductCard({
   stock 
 }: ProductProps) {
   const [isHovered, setIsHovered] = useState(false);
-  const router = useRouter();
-  const { addToCart } = useCart();
+  const [imageError, setImageError] = useState(false);
 
-  const handleAddToCart = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    addToCart({
-      id,
-      name,
-      price,
-      image,
-      seller,
-      stock
-    });
-
-    // Could show a toast notification here
+  // Category-specific fallbacks using professional Unsplash photos
+  const categoryFallbacks: Record<string, string> = {
+    'electronics': 'https://images.unsplash.com/photo-1550009158-9ebf69173e03?auto=format&fit=crop&w=500&q=60',
+    'clothing': 'https://images.unsplash.com/photo-1542060748-10c28b62716f?auto=format&fit=crop&w=500&q=60',
+    'food': 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=500&q=60',
+    'other': 'https://images.unsplash.com/photo-1523381294911-8d3cead13475?auto=format&fit=crop&w=500&q=60'
   };
 
-  // Function to navigate to product detail page
-  const navigateToDetail = () => {
-    router.push(`/product/${id}`);
+  const fallbackImage = category && category in categoryFallbacks 
+    ? categoryFallbacks[category] 
+    : 'https://images.unsplash.com/photo-1523381294911-8d3cead13475?auto=format&fit=crop&w=500&q=60';
+
+  const handleImageError = () => {
+    setImageError(true);
+  };
+
+  // Determine which image to display with IPFS support
+  const getImageUrl = () => {
+    if (imageError) return fallbackImage;
+    
+    // If we have an IPFS URL that's not in ipfs:// protocol format, use it directly
+    if (image && image.includes('/ipfs/')) return image;
+    
+    // If we have an IPFS CID, convert it to a gateway URL
+    if (ipfsCid) return `https://ipfs.io/ipfs/${ipfsCid}`;
+    
+    // Otherwise use the provided image URL or fallback
+    return image || fallbackImage;
+  };
+
+  const truncateDescription = (text: string, maxLength: number = 80) => {
+    if (!text) return '';
+    return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+  };
+
+  // IPFS badge to show when content is on IPFS
+  const IpfsBadge = () => {
+    if (!ipfsCid) return null;
+    
+    return (
+      <div className="absolute bottom-2 right-2 bg-blue-500 text-white text-xs font-bold px-2 py-1 rounded-full flex items-center">
+        <svg className="w-3 h-3 mr-1" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2L2 19h20L12 2zm0 4l7 11H5l7-11z" />
+        </svg>
+        IPFS
+      </div>
+    );
   };
 
   return (
     <div 
-      className={`bg-white border rounded-lg shadow-sm overflow-hidden transition-transform duration-300 cursor-pointer ${
-        isHovered ? 'transform scale-[1.02] shadow-md' : ''
-      }`}
+      className="group relative bg-white rounded-lg overflow-hidden shadow-sm transition-all duration-300 hover:shadow-xl"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      onClick={navigateToDetail}
     >
-      <div className="relative w-full h-48 overflow-hidden bg-gray-100">
-        {image ? (
+      <Link href={`/product/${id}`}>
+        <div className="relative h-64 overflow-hidden">
           <img
-            src={image}
+            src={getImageUrl()}
             alt={name}
-            className="w-full h-full object-cover transition-transform duration-300"
-            style={{
-              transform: isHovered ? 'scale(1.05)' : 'scale(1)',
-            }}
-            onError={(e) => {
-              (e.target as HTMLImageElement).src = 'https://via.placeholder.com/300x200?text=No+Image';
-            }}
+            className={`w-full h-full object-cover transform transition-transform duration-500 ${isHovered ? 'scale-110' : 'scale-100'}`}
+            onError={handleImageError}
           />
-        ) : ipfsUrl ? (
-          <img
-            src={ipfsUrl}
-            alt={name}
-            className="w-full h-full object-cover transition-transform duration-300"
-            style={{
-              transform: isHovered ? 'scale(1.05)' : 'scale(1)',
-            }}
-            onError={(e) => {
-              (e.target as HTMLImageElement).src = 'https://via.placeholder.com/300x200?text=No+Image';
-            }}
-          />
-        ) : (
-          <div className="flex items-center justify-center h-full w-full bg-gray-200">
-            <span className="text-gray-400">No image available</span>
-          </div>
-        )}
-
-        {verified && (
-          <div className="absolute top-2 right-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full">
-            Verified
-          </div>
-        )}
-
-        {ipfsCid && (
-          <div className="absolute bottom-2 left-2 bg-indigo-600 text-white text-xs px-2 py-1 rounded-full">
-            IPFS
-          </div>
-        )}
-      </div>
+          {verified && (
+            <div className="absolute top-2 right-2 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+              Verified
+            </div>
+          )}
+          {stock && stock < 5 && (
+            <div className="absolute bottom-2 left-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+              Low stock
+            </div>
+          )}
+          <IpfsBadge />
+        </div>
+      </Link>
 
       <div className="p-4">
         <div className="mb-2 flex justify-between items-start">
@@ -144,7 +139,12 @@ export default function ProductCard({
                 ? 'bg-indigo-600 text-white' 
                 : 'bg-indigo-100 text-indigo-700'
             }`}
-            onClick={handleAddToCart}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              // Add to cart functionality
+              alert('Adding to cart will be implemented soon!');
+            }}
           >
             Add to Cart
           </button>

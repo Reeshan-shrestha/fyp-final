@@ -78,22 +78,22 @@ router.post('/register', async (req, res) => {
       JWT_SECRET,
       { expiresIn: TOKEN_EXPIRATION }
     );
-    
-    // Log successful registration
-    console.log(`Registration successful: ${username}, ${email}, role: ${newUser.role}`);
-    
+        
+        // Log successful registration
+        console.log(`Registration successful: ${username}, ${email}, role: ${newUser.role}`);
+        
     // Return user data and token
-    res.status(201).json({
-      token,
-      user: {
-        id: newUser.id,
-        username: newUser.username,
-        email: newUser.email,
-        role: newUser.role,
-        isAdmin: newUser.role === 'admin',
-        isSeller: newUser.role === 'seller'
-      }
-    });
+        res.status(201).json({
+          token,
+          user: {
+            id: newUser.id,
+            username: newUser.username,
+            email: newUser.email,
+            role: newUser.role,
+            isAdmin: newUser.role === 'admin',
+            isSeller: newUser.role === 'seller'
+          }
+        });
   } catch (error) {
     console.error('Registration error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });

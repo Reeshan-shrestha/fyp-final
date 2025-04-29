@@ -61,7 +61,7 @@ export const AuthProvider = ({ children }) => {
     try {
       setLoading(true);
       setError(null);
-      
+
       // Basic validation
       if (!credentials.username && !credentials.email) {
         throw new Error('Username or email is required');
@@ -131,12 +131,12 @@ export const AuthProvider = ({ children }) => {
         
         // Attempt to get current user with token
         const userData = await authService.getCurrentUser();
-        
+      
         if (userData) {
           setUser(userData);
-          setGuestMode(false);
-          setAuthenticated(true);
-          setIsAuthenticated(true);
+        setGuestMode(false);
+        setAuthenticated(true);
+        setIsAuthenticated(true);
           console.log('User authenticated from saved token');
         } else {
           // Token invalid - clear it

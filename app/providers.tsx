@@ -2,7 +2,6 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
-import { CartProvider } from './hooks/useCart';
 
 // Create Auth Context
 const AuthContext = createContext(null);
@@ -154,9 +153,7 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider value={value}>
-      <CartProvider>
-        {children}
-      </CartProvider>
+      {children}
     </AuthContext.Provider>
   );
 } 

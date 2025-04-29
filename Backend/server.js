@@ -15,7 +15,7 @@ app.use(bodyParser.json());
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
-app.use('/api/billing', billingRoutes);
+app.use('/api/billing', billingRoutes); 
 
 // Start server
 const PORT = process.env.PORT || 3006;

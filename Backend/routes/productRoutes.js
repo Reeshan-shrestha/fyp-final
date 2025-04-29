@@ -58,8 +58,14 @@ router.get('/', async (req, res) => {
       
       // Add seller filter if provided
       if (req.query.seller) {
-        console.log(`Filtering by seller name: ${req.query.seller}`);
-        sellerFilters.push({ seller: req.query.seller });
+        console.log(`Filtering by seller username: ${req.query.seller}`);
+        sellerFilters.push({ 
+          $or: [
+            { seller: req.query.seller },
+            { sellerName: req.query.seller },
+            { 'seller.username': req.query.seller }
+          ]
+        });
       }
       
       // Add sellerId filter if provided
@@ -71,7 +77,12 @@ router.get('/', async (req, res) => {
       // Add sellerName filter if provided
       if (req.query.sellerName) {
         console.log(`Filtering by seller name: ${req.query.sellerName}`);
-        sellerFilters.push({ sellerName: req.query.sellerName });
+        sellerFilters.push({ 
+          $or: [
+            { seller: req.query.sellerName },
+            { sellerName: req.query.sellerName }
+          ]
+        });
       }
       
       // Apply OR filter to find products matching any of the criteria
@@ -79,7 +90,7 @@ router.get('/', async (req, res) => {
         filters.$or = sellerFilters;
       }
       
-      console.log('Filtering products with criteria:', filters);
+      console.log('Filtering products with criteria:', JSON.stringify(filters, null, 2));
     }
     
     // Perform the database query with filters

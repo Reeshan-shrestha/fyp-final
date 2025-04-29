@@ -164,7 +164,7 @@ export const login = async (credentials) => {
       
       // Store user data
       safeBrowserStorage.setItem(config.AUTH.USER_KEY, JSON.stringify(userData));
-      return userData;
+        return userData;
     } catch (loginError) {
       console.warn('Login API error:', loginError);
       
@@ -252,8 +252,8 @@ export const register = async (userData) => {
       
       // Create a normalized user object from the response
       const normalizedUser = normalizeUserData(response.data);
-      
-      // Store user data
+    
+    // Store user data
       safeBrowserStorage.setItem(config.AUTH.USER_KEY, JSON.stringify(normalizedUser));
       return normalizedUser;
     } else {

@@ -25,7 +25,7 @@ let ipfs = null;
 
 // Initialize IPFS client if credentials are available
 const initializeIpfs = () => {
-  try {
+try {
     if (!IPFS_PROJECT_ID || !IPFS_PROJECT_SECRET) {
       console.warn('IPFS credentials not found in environment variables. IPFS features will be disabled.');
       return false;
@@ -45,11 +45,11 @@ const initializeIpfs = () => {
     ipfsAvailable = true;
     console.log('IPFS client initialized successfully');
     return true;
-  } catch (error) {
-    console.error('Error initializing IPFS client:', error);
+} catch (error) {
+  console.error('Error initializing IPFS client:', error);
     ipfsAvailable = false;
     return false;
-  }
+}
 };
 
 /**
