@@ -6,6 +6,11 @@ const orderSchema = new mongoose.Schema({
         ref: 'User',
         required: true
     },
+    sellerId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+    },
     items: [{
         product: {
             type: mongoose.Schema.Types.ObjectId,
@@ -76,8 +81,7 @@ const orderSchema = new mongoose.Schema({
 
 // Add indexes for better query performance
 orderSchema.index({ user: 1, createdAt: -1 });
-orderSchema.index({ status: 1 });
-orderSchema.index({ paymentStatus: 1 });
+orderSchema.index({ sellerId: 1, createdAt: -1 });
 
 // Minimum time between status changes (in hours)
 const MIN_STATUS_CHANGE_TIME = {

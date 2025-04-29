@@ -176,8 +176,7 @@ const Cart = () => {
             date: orderData.date,
             status: 'completed',
             shipping: orderData.shippingAddress,
-            sellerId,
-            paymentMethod: orderData.paymentMethod
+            sellerId
           };
           
           const billResponse = await apiService.createBill(billData);
@@ -186,11 +185,16 @@ const Cart = () => {
           return { order: orderResponse.order, bill: billResponse.data };
         } catch (error) {
           console.error(`Error creating order for seller ${sellerId}:`, error);
-          throw error;
+          // Add seller information to the error message
+          const errorMessage = `Failed to create order for seller ${sellerId}: ${error.message}`;
+          throw new Error(errorMessage);
         }
       });
 
-      const results = await Promise.all(orderPromises);
+      const results = await Promise.all(orderPromises).catch(error => {
+        // If any order fails, throw the error to be caught by the outer try-catch
+        throw error;
+      });
 
       // Clear cart and show success message
       clearCart();
@@ -215,6 +219,9 @@ const Cart = () => {
         message: error.message || 'Failed to place order. Please try again.',
         severity: 'error'
       });
+      // Keep the cart items if the order failed
+      setIsProcessing(false);
+      return;
     } finally {
       setIsProcessing(false);
     }
