@@ -1,0 +1,18 @@
+# Database connection
+MONGODB_URI=mongodb://localhost:27017/chainbazzar
+
+# Authentication
+JWT_SECRET=nP349ywjvTZZE0Mh+tcX/7pSjaB8/cWbGGN9BvL6OCI=
+
+# Server configuration
+PORT=3006
+
+# IPFS Configuration
+IPFS_PROJECT_ID=2VKTbV2VBhQsVVFPwu9sNXiC7pW
+IPFS_PROJECT_SECRET=cbdc24c50fc57da4ffc96d9ca56f7e31
+IPFS_API_URL=https://ipfs.infura.io:5001
+
+# Blockchain Configuration
+WEB3_PROVIDER=http://localhost:8545
+INVENTORY_CONTRACT_ADDRESS=0x123456789abcdef123456789abcdef123456789
+ENABLE_MOCK_BLOCKCHAIN=true 
