@@ -2,13 +2,11 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '../providers';
+import { useAuth } from '../../Frontend/src/context/AuthContext';
 import styles from './sell.module.css';
-import AddProductForm from '../../Frontend/src/components/AddProduct';
 
-// Add export config to disable static generation
-export const dynamic = 'force-dynamic';
-export const fetchCache = 'force-no-store';
+// Import AddProduct component after moving it
+import AddProductForm from '../../Frontend/src/components/AddProduct';
 
 export default function SellPage() {
   const router = useRouter();

@@ -4,7 +4,6 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 require('dotenv').config();
-const mongoose = require('mongoose');
 
 // Secret key for JWT
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -69,31 +68,39 @@ router.post('/register', async (req, res) => {
     
     await newUser.save();
     
-    // Create and sign a JWT token with consistent format, including the username
-    const token = jwt.sign(
-      { 
-        id: newUser._id,
-        username: newUser.username 
-      },
-      JWT_SECRET,
-      { expiresIn: TOKEN_EXPIRATION }
-    );
-    
-    // Log successful registration
-    console.log(`Registration successful: ${username}, ${email}, role: ${newUser.role}`);
-    
-    // Return user data and token
-    res.status(201).json({
-      token,
+    // Create and sign a JWT token
+    const payload = {
       user: {
         id: newUser.id,
         username: newUser.username,
         email: newUser.email,
-        role: newUser.role,
-        isAdmin: newUser.role === 'admin',
-        isSeller: newUser.role === 'seller'
+        role: newUser.role
       }
-    });
+    };
+    
+    jwt.sign(
+      payload,
+      JWT_SECRET,
+      { expiresIn: TOKEN_EXPIRATION },
+      (err, token) => {
+        if (err) throw err;
+        
+        // Log successful registration
+        console.log(`Registration successful: ${username}, ${email}, role: ${newUser.role}`);
+        
+        res.status(201).json({
+          token,
+          user: {
+            id: newUser.id,
+            username: newUser.username,
+            email: newUser.email,
+            role: newUser.role,
+            isAdmin: newUser.role === 'admin',
+            isSeller: newUser.role === 'seller'
+          }
+        });
+      }
+    );
   } catch (error) {
     console.error('Registration error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -103,26 +110,14 @@ router.post('/register', async (req, res) => {
 // Login user
 router.post('/login', async (req, res) => {
   try {
-    const { username, email, password } = req.body;
+    const { email, password } = req.body;
+    console.log('Login attempt for email:', email);
     
-    // Support login with either username or email
-    let loginIdentifier = email || username;
-    console.log(`Login attempt for identifier: ${loginIdentifier}`);
-    
-    if (!loginIdentifier || !password) {
-      return res.status(400).json({ message: 'Username/email and password are required' });
-    }
-    
-    // Check if user exists by either username or email
-    const user = await User.findOne({
-      $or: [
-        { email: loginIdentifier },
-        { username: loginIdentifier }
-      ]
-    });
+    // Check if user exists
+    const user = await User.findOne({ email });
     
     if (!user) {
-      console.log('User not found:', loginIdentifier);
+      console.log('User not found:', email);
       return res.status(400).json({ message: 'Invalid credentials' });
     }
     
@@ -130,18 +125,15 @@ router.post('/login', async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password);
     
     if (!isMatch) {
-      console.log('Password mismatch for user:', loginIdentifier);
+      console.log('Password mismatch for user:', email);
       return res.status(400).json({ message: 'Invalid credentials' });
     }
     
     console.log('Successful login for user:', user.username);
     
-    // Create JWT token with consistent format, including the username for profile retrieval
+    // Create JWT token
     const token = jwt.sign(
-      { 
-        id: user._id,
-        username: user.username
-      },
+      { id: user._id, role: user.role },
       JWT_SECRET,
       { expiresIn: TOKEN_EXPIRATION }
     );
@@ -179,63 +171,27 @@ router.get('/me', async (req, res) => {
       return res.status(401).json({ message: 'No token, authorization denied' });
     }
     
-    // Debug token
-    console.log('Token received for /me endpoint:', token.substring(0, 15) + '...');
-    
     // Verify token
     const decoded = jwt.verify(token, JWT_SECRET);
-    console.log('Decoded token payload:', JSON.stringify(decoded));
     
-    // Get the user's ID and username from token if available
-    const userId = decoded.id || (decoded.user && decoded.user.id);
-    const username = decoded.username || (decoded.user && decoded.user.username);
-    
-    console.log('Token contains - ID:', userId, 'Username:', username);
-    
-    // Find user by username first if available, or fall back to admin for testing
-    let user;
-    
-    if (username) {
-      user = await User.findOne({ username }).select('-password');
-    }
-    
-    // Temporary workaround for development/testing
-    if (!user) {
-      user = await User.findOne({ username: 'admin' }).select('-password');
-      if (user) {
-        console.log('⚠️ User not found with token info, using admin user as fallback');
-      }
-    }
+    // Get user
+    const user = await User.findById(decoded.id).select('-password');
     
     if (!user) {
-      console.log('User not found even with admin fallback');
       return res.status(404).json({ message: 'User not found' });
     }
-    
-    console.log('User found:', user.username);
     
     // Add isAdmin and isSeller flags for frontend
     const userResponse = {
       ...user.toObject(),
-      id: user._id,
       isAdmin: user.role === 'admin',
       isSeller: user.role === 'seller'
     };
     
     res.status(200).json(userResponse);
   } catch (error) {
-    console.error('Error getting user:', error.message, error.stack);
-    
-    if (error.name === 'TokenExpiredError') {
-      return res.status(401).json({ 
-        message: 'Token has expired. Please login again',
-        expired: true
-      });
-    } else if (error.name === 'JsonWebTokenError') {
-      return res.status(401).json({ message: 'Invalid token: ' + error.message });
-    }
-    
-    res.status(500).json({ message: 'Server error: ' + error.message });
+    console.error('Error getting user:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -317,12 +273,9 @@ router.post('/reset-password', async (req, res) => {
   }
 });
 
-// Add a test endpoint to verify backend connectivity
+// Simple API test endpoint
 router.get('/test', (req, res) => {
-  res.status(200).json({ 
-    message: 'Auth service is running',
-    timestamp: new Date().toISOString()
-  });
+  res.json({ message: 'Auth API is working' });
 });
 
 // Endpoint to check all users in the system (for development/testing only)

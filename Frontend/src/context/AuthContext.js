@@ -13,41 +13,6 @@ export const useAuth = () => {
   return context;
 };
 
-// Helper for safe browser storage access (client-side only)
-const safeBrowserStorage = {
-  getItem: (key, storageType = 'local') => {
-    if (typeof window === 'undefined') return null;
-    
-    try {
-      const storage = storageType === 'local' ? localStorage : sessionStorage;
-      return storage.getItem(key);
-    } catch (error) {
-      console.error(`Error accessing ${storageType} storage:`, error);
-      return null;
-    }
-  },
-  setItem: (key, value, storageType = 'local') => {
-    if (typeof window === 'undefined') return;
-    
-    try {
-      const storage = storageType === 'local' ? localStorage : sessionStorage;
-      storage.setItem(key, value);
-    } catch (error) {
-      console.error(`Error setting ${storageType} storage:`, error);
-    }
-  },
-  removeItem: (key, storageType = 'local') => {
-    if (typeof window === 'undefined') return;
-    
-    try {
-      const storage = storageType === 'local' ? localStorage : sessionStorage;
-      storage.removeItem(key);
-    } catch (error) {
-      console.error(`Error removing from ${storageType} storage:`, error);
-    }
-  }
-};
-
 export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -61,50 +26,32 @@ export const AuthProvider = ({ children }) => {
     try {
       setLoading(true);
       setError(null);
-      
-      // Basic validation
-      if (!credentials.username && !credentials.email) {
-        throw new Error('Username or email is required');
+
+      // Validate input
+      if (!credentials.username || !credentials.password) {
+        throw new Error('Username and password are required');
       }
       
-      if (!credentials.password) {
-        throw new Error('Password is required');
-      }
+      // Use authentication service
+      const userData = await authService.login(credentials);
       
-      console.log('AuthContext: Attempting login with:', credentials);
-      
-      // Use auth service to login
-      const response = await authService.login(credentials);
-      
-      console.log('AuthContext: Login response received:', response);
-      
-      if (response && response.token) {
-        // Store token
-        safeBrowserStorage.setItem('token', response.token);
-        
-        // Set Authorization header
-        axios.defaults.headers.common['Authorization'] = `Bearer ${response.token}`;
-        
-        // Update state with user data
-        const userData = {
-          ...response,
-          id: response.id || response._id || (response.user && (response.user.id || response.user._id)),
-          username: response.username || (response.user && response.user.username),
-          email: response.email || (response.user && response.user.email),
-          role: response.role || (response.user && response.user.role),
-          isAdmin: response.isAdmin || (response.user && response.user.isAdmin) || (response.role === 'admin') || (response.user && response.user.role === 'admin'),
-          isSeller: response.isSeller || (response.user && response.user.isSeller) || (response.role === 'seller') || (response.user && response.user.role === 'seller')
+      if (userData) {
+        // Update state with additional seller information if needed
+        const enhancedUserData = {
+          ...userData,
+          // Ensure we have a consistent sellerId format
+          sellerId: userData.sellerId || (userData.role === 'seller' ? `seller_${userData.username}` : null)
         };
         
-        setUser(userData);
+        setUser(enhancedUserData);
         setGuestMode(false);
         setAuthenticated(true);
         setIsAuthenticated(true);
         
-        console.log('User logged in successfully:', userData);
-        return userData;
+        console.log('User logged in successfully:', enhancedUserData);
+        return enhancedUserData;
       } else {
-        throw new Error('Login failed - invalid response from server');
+        throw new Error('Failed to login');
       }
     } catch (error) {
       console.error('Error logging in:', error);
@@ -115,134 +62,97 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Initialize auth state - check if we have a token and fetch user info
-  const initializeAuth = useCallback(async () => {
-    try {
-      setLoading(true);
-      
-      // Check for token in storage
-      const token = safeBrowserStorage.getItem('token');
-      
-      if (token) {
-        console.log('Found token, verifying...');
-        
-        // Set token in axios headers
-        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-        
-        // Attempt to get current user with token
-        const userData = await authService.getCurrentUser();
-        
-        if (userData) {
-          setUser(userData);
-          setGuestMode(false);
-          setAuthenticated(true);
-          setIsAuthenticated(true);
-          console.log('User authenticated from saved token');
-        } else {
-          // Token invalid - clear it
-          console.log('Token verification failed, clearing');
-          safeBrowserStorage.removeItem('token');
-          delete axios.defaults.headers.common['Authorization'];
-          setupGuestAccount();
-        }
-      } else {
-        console.log('No token found, using guest mode');
-        setupGuestAccount();
-      }
-    } catch (error) {
-      console.error('Auth initialization error:', error);
-      setupGuestAccount();
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // Setup guest account
-  const setupGuestAccount = () => {
-    setUser(null);
-    setGuestMode(true);
-    setAuthenticated(false);
-    setIsAuthenticated(false);
-  };
-
-  // Logout user
-  const logout = () => {
-    setUser(null);
-    setGuestMode(true);
-    setAuthenticated(false);
-    setIsAuthenticated(false);
-    
-    // Clear token from storage
-    safeBrowserStorage.removeItem('token');
-    
-    // Clear Authorization header
-    delete axios.defaults.headers.common['Authorization'];
-    
-    console.log('User logged out');
-  };
-
   // Register user
   const register = async (userData) => {
     try {
       setLoading(true);
       setError(null);
-      
-      // Basic validation
-      if (!userData.username) {
-        throw new Error('Username is required');
+
+      // Validate input
+      if (!userData.username || !userData.email || !userData.password) {
+        throw new Error('All fields are required');
       }
       
-      if (!userData.email) {
-        throw new Error('Email is required');
-      }
+      // Use authentication service
+      const user = await authService.register(userData);
       
-      if (!userData.password) {
-        throw new Error('Password is required');
-      }
-      
-      console.log('AuthContext: Attempting registration for:', userData.username);
-      
-      // Use auth service to register
-      const response = await authService.register(userData);
-      
-      console.log('AuthContext: Registration response received:', response);
-      
-      if (response && response.token) {
-        // Store token
-        safeBrowserStorage.setItem('token', response.token);
-        
-        // Set Authorization header
-        axios.defaults.headers.common['Authorization'] = `Bearer ${response.token}`;
-        
-        // Update state with user data (handling multiple response formats)
-        const userData = {
-          ...response,
-          id: response.id || response._id || (response.user && (response.user.id || response.user._id)),
-          username: response.username || (response.user && response.user.username),
-          email: response.email || (response.user && response.user.email),
-          role: response.role || (response.user && response.user.role),
-          isAdmin: response.isAdmin || (response.user && response.user.isAdmin) || (response.role === 'admin') || (response.user && response.user.role === 'admin'),
-          isSeller: response.isSeller || (response.user && response.user.isSeller) || (response.role === 'seller') || (response.user && response.user.role === 'seller')
-        };
-        
-        setUser(userData);
+      if (user) {
+        // Update state
+        setUser(user);
         setGuestMode(false);
         setAuthenticated(true);
         setIsAuthenticated(true);
         
-        console.log('User registered successfully:', userData);
-        return userData;
+        console.log('User registered successfully:', user);
+        return user;
       } else {
-        throw new Error('Registration failed - invalid response from server');
+        throw new Error('Failed to register');
       }
     } catch (error) {
-      console.error('Error registering:', error);
+      console.error('Error registering user:', error);
       setError(error.message || 'Failed to register');
       return null;
     } finally {
       setLoading(false);
     }
   };
+
+  // Logout user
+  const logout = () => {
+    authService.logout();
+    
+    setUser(null);
+    setGuestMode(true);
+    setAuthenticated(false);
+    setIsAuthenticated(false);
+    
+    // Generate guest account
+    setGuestAccount();
+  };
+
+  const setGuestAccount = () => {
+    // Generate a random guest ID
+    const guestUser = {
+      id: 'guest_' + Math.random().toString(36).substring(2, 15),
+      username: 'Guest User',
+      displayName: 'Guest User'
+    };
+    setUser(guestUser);
+    setGuestMode(true);
+    setAuthenticated(false);
+    setIsAuthenticated(false);
+  };
+
+  const initializeAuth = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Initialize auth service
+      authService.initAuth();
+      
+      // Check if user is already logged in
+      const savedUser = authService.getCurrentUser();
+      if (savedUser) {
+        setUser(savedUser);
+        setGuestMode(false);
+        setAuthenticated(true);
+        setIsAuthenticated(true);
+      } else {
+        // Use guest mode if no user is logged in
+        setGuestAccount();
+      }
+    } catch (error) {
+      console.error('Error initializing auth:', error);
+      setError(error.message || 'Failed to initialize authentication');
+      // Still create a guest account if all else fails
+      if (!user) {
+        setGuestAccount();
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, []); // Empty dependency array so it doesn't recreate on every render
 
   const verifyProduct = async (productId) => {
     try {
@@ -256,10 +166,10 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Use effect to initialize auth on mount
+  // Initialize auth when the component mounts
   useEffect(() => {
     initializeAuth();
-  }, []);
+  }, [initializeAuth]); // Include initializeAuth as a dependency since we're using useCallback
 
   const value = {
     loading,
