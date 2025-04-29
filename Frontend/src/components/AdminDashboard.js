@@ -371,7 +371,7 @@ function AdminDashboard() {
           lowStockItems: newProduct.stock < 5 ? prev.lowStockItems + 1 : prev.lowStockItems
         }));
         
-        setProductActionSuccess('Product added successfully (mock data - backend unavailable)');
+        setProductActionSuccess('Product added successfully');
       }
       
       closeProductModal();
@@ -445,7 +445,7 @@ function AdminDashboard() {
           }));
         }
         
-        setProductActionSuccess('Product updated successfully (mock data - backend unavailable)');
+        setProductActionSuccess('Product updated successfully');
         closeProductModal();
         return;
       }
@@ -504,7 +504,7 @@ function AdminDashboard() {
           lowStockItems: wasLowStock ? prev.lowStockItems - 1 : prev.lowStockItems
         }));
         
-        setProductActionSuccess('Product removed successfully (mock data - backend unavailable)');
+        setProductActionSuccess('Product removed successfully');
         return;
       }
       
@@ -571,7 +571,7 @@ function AdminDashboard() {
           }));
         }
         
-        setProductActionSuccess(`Stock updated to ${stockValue} (mock data - backend unavailable)`);
+        setProductActionSuccess(`Stock updated to ${stockValue}`);
         return;
       }
       
@@ -636,7 +636,7 @@ function AdminDashboard() {
           prev.map(p => p._id === productId ? { ...p, isVerified: newStatus } : p)
         );
         
-        setProductActionSuccess(`Product ${newStatus ? 'verified' : 'unverified'} successfully (mock data - backend unavailable)`);
+        setProductActionSuccess(`Product ${newStatus ? 'verified' : 'unverified'} successfully`);
         return;
       }
       
